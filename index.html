@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MagiK Kingdom - Phase 1</title>
+  <title>MagiK Kingdom</title>
   <style>
     html, body {
       margin: 0;
       padding: 0;
-      background: #0b1020;
+      background: #0f172a;
       color: white;
       font-family: Arial, sans-serif;
       overflow: hidden;
@@ -27,7 +27,7 @@
       display: block;
       background: #1f2937;
       border: 3px solid #d4af37;
-      box-shadow: 0 0 30px rgba(0,0,0,0.45);
+      box-shadow: 0 0 30px rgba(0,0,0,0.5);
       image-rendering: pixelated;
     }
   </style>
@@ -38,46 +38,18 @@
   </div>
 
   <script>
-    /*
-      ============================================================
-      MagiK Kingdom - Phase 1 (Expanded World - Prince Character)
-      ============================================================
-      Enhanced version with:
-      - Much larger world map (50x40 tiles)
-      - Prince character inspired by the user's sketch: cat-like, crown, cape, armor, royal look
-      - Pokémon-style houses and village
-      - Camera system following the player
-      - Better visual details
-      - Chromebook-friendly controls
-      ============================================================
-    */
-
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
 
-    // ============================================================
-    // CONSTANTS
-    // ============================================================
     const TILE = 32;
     const WORLD_COLS = 50;
     const WORLD_ROWS = 40;
+    const PLAYER_WIDTH = 42;
+    const PLAYER_HEIGHT = 58;
 
-    // Player dimensions
-    const PLAYER_WIDTH = 40;
-    const PLAYER_HEIGHT = 56;
-
-    // Camera
     const camera = { x: 0, y: 0 };
 
-    // ============================================================
-    // INPUT SYSTEM
-    // ============================================================
-    const keys = {
-      up: false,
-      down: false,
-      left: false,
-      right: false
-    };
+    const keys = { up: false, down: false, left: false, right: false };
 
     document.addEventListener("keydown", (event) => {
       const key = event.key.toLowerCase();
@@ -85,7 +57,6 @@
       if (key === "arrowdown" || key === "s") keys.down = true;
       if (key === "arrowleft" || key === "a") keys.left = true;
       if (key === "arrowright" || key === "d") keys.right = true;
-
       if (["arrowup","arrowdown","arrowleft","arrowright"," ","w","a","s","d"].includes(key)) {
         event.preventDefault();
       }
@@ -99,28 +70,10 @@
       if (key === "arrowright" || key === "d") keys.right = false;
     });
 
-    // ============================================================
-    // MAP SYSTEM
-    // ============================================================
-    // Tile values:
-    // 0 = grass
-    // 1 = dirt/path
-    // 2 = wall/roof
-    // 3 = water
-    // 4 = flower/grass detail
-    // 5 = stone/rock
-    // 6 = dark roof
-    // 7 = door wood
-    // 8 = tree leaves
-    // 9 = fence
-    // 10 = sign post
-    // 11 = bridge wood
     const map = Array.from({ length: WORLD_ROWS }, () => Array(WORLD_COLS).fill(0));
 
     function setTile(x, y, value) {
-      if (x >= 0 && x < WORLD_COLS && y >= 0 && y < WORLD_ROWS) {
-        map[y][x] = value;
-      }
+      if (x >= 0 && x < WORLD_COLS && y >= 0 && y < WORLD_ROWS) map[y][x] = value;
     }
 
     function paintRect(x, y, w, h, value) {
@@ -147,21 +100,15 @@
 
     function drawFenceSection(startX, startY, length, direction) {
       if (direction === "horizontal") {
-        for (let i = 0; i < length; i++) {
-          setTile(startX + i, startY, 9);
-        }
+        for (let i = 0; i < length; i++) setTile(startX + i, startY, 9);
       } else {
-        for (let i = 0; i < length; i++) {
-          setTile(startX, startY + i, 9);
-        }
+        for (let i = 0; i < length; i++) setTile(startX, startY + i, 9);
       }
     }
 
     function createVillageMap() {
       for (let y = 0; y < WORLD_ROWS; y++) {
-        for (let x = 0; x < WORLD_COLS; x++) {
-          map[y][x] = 0;
-        }
+        for (let x = 0; x < WORLD_COLS; x++) map[y][x] = 0;
       }
 
       paintRect(0, 0, WORLD_COLS, 1, 5);
@@ -180,9 +127,7 @@
       for (let i = 0; i < 100; i++) {
         const fx = 2 + Math.floor(Math.random() * (WORLD_COLS - 4));
         const fy = 2 + Math.floor(Math.random() * (WORLD_ROWS - 4));
-        if (map[fy][fx] === 0) {
-          map[fy][fx] = 4;
-        }
+        if (map[fy][fx] === 0) map[fy][fx] = 4;
       }
 
       drawHouse(2, 3, 8, 5);
@@ -217,26 +162,19 @@
       for (const area of forestAreas) {
         for (let yy = area.y; yy < area.y + area.h; yy++) {
           for (let xx = area.x; xx < area.x + area.w; xx++) {
-            if (Math.random() > 0.3) {
-              setTile(xx, yy, 8);
-            }
+            if (Math.random() > 0.3) setTile(xx, yy, 8);
           }
         }
       }
 
       const treeSpots = [
-        [20, 5], [25, 5], [30, 5],
-        [20, 35], [25, 35], [30, 35],
-        [40, 23], [42, 27], [45, 30]
+        [20, 5], [25, 5], [30, 5], [20, 35], [25, 35], [30, 35], [40, 23], [42, 27], [45, 30]
       ];
-      for (const [tx, ty] of treeSpots) {
-        paintRect(tx, ty, 2, 2, 8);
-      }
+      for (const [tx, ty] of treeSpots) paintRect(tx, ty, 2, 2, 8);
 
       paintRect(21, 21, 4, 3, 3);
       paintRect(22, 24, 3, 2, 3);
       paintRect(8, 35, 2, 3, 3);
-
       setTile(16, 16, 10);
       setTile(33, 16, 10);
 
@@ -246,9 +184,7 @@
         { x: 22, y: 10, w: 2, h: 1 },
         { x: 25, y: 10, w: 2, h: 1 }
       ];
-      for (const patch of rockPatches) {
-        paintRect(patch.x, patch.y, patch.w, patch.h, 5);
-      }
+      for (const patch of rockPatches) paintRect(patch.x, patch.y, patch.w, patch.h, 5);
 
       paintRect(22, 24, 3, 1, 11);
       paintRect(22, 17, 4, 2, 1);
@@ -262,14 +198,9 @@
       return tile === 2 || tile === 5 || tile === 3 || tile === 6 || tile === 8 || tile === 9;
     }
 
-    // ============================================================
-    // PLAYER OBJECT
-    // ============================================================
     const player = {
       x: 24 * TILE + TILE / 2,
       y: 18 * TILE + TILE / 2,
-      vx: 0,
-      vy: 0,
       speed: 140,
       facing: "down",
       walkFrame: 0,
@@ -278,8 +209,7 @@
     };
 
     function rectIntersectsRect(r1, r2) {
-      return r1.x < r2.x + r2.w && r1.x + r1.w > r2.x &&
-             r1.y < r2.y + r2.h && r1.y + r1.h > r2.y;
+      return r1.x < r2.x + r2.w && r1.x + r1.w > r2.x && r1.y < r2.y + r2.h && r1.y + r1.h > r2.y;
     }
 
     function isBlockedAtPosition(px, py) {
@@ -298,24 +228,14 @@
       for (let ty = top; ty <= bottom; ty++) {
         for (let tx = left; tx <= right; tx++) {
           if (isSolidTile(tx, ty)) {
-            const tileRect = {
-              x: tx * TILE,
-              y: ty * TILE,
-              w: TILE,
-              h: TILE
-            };
-            if (rectIntersectsRect(rect, tileRect)) {
-              return true;
-            }
+            const tileRect = { x: tx * TILE, y: ty * TILE, w: TILE, h: TILE };
+            if (rectIntersectsRect(rect, tileRect)) return true;
           }
         }
       }
       return false;
     }
 
-    // ============================================================
-    // UPDATE LOOP
-    // ============================================================
     function update(dt) {
       let moveX = 0;
       let moveY = 0;
@@ -326,7 +246,7 @@
       if (keys.down) moveY = 1;
 
       if (moveX !== 0 || moveY !== 0) {
-        const length = Math.hypot(moveX, moveY);
+        const length = Math.hypot(moveX, moveY) || 1;
         moveX = (moveX / length) * player.speed * dt;
         moveY = (moveY / length) * player.speed * dt;
 
@@ -342,14 +262,10 @@
         const newY = player.y + moveY;
 
         player.x = newX;
-        if (isBlockedAtPosition(player.x, player.y)) {
-          player.x -= moveX;
-        }
+        if (isBlockedAtPosition(player.x, player.y)) player.x -= moveX;
 
         player.y = newY;
-        if (isBlockedAtPosition(player.x, player.y)) {
-          player.y -= moveY;
-        }
+        if (isBlockedAtPosition(player.x, player.y)) player.y -= moveY;
 
         player.isWalking = true;
         player.walkTimer += dt;
@@ -372,10 +288,6 @@
       camera.y = Math.max(0, Math.min(camera.y, WORLD_ROWS * TILE - canvas.height));
     }
 
-    // ============================================================
-    // DRAWING FUNCTIONS
-    // ============================================================
-
     function drawTile(x, y, tileType, screenX, screenY) {
       if (tileType === 0) {
         ctx.fillStyle = "#7bc916";
@@ -387,7 +299,6 @@
         ctx.fillStyle = "rgba(0,0,0,0.05)";
         ctx.fillRect(screenX, screenY + TILE - 8, TILE, 8);
       }
-
       if (tileType === 1) {
         ctx.fillStyle = "#c9a876";
         ctx.fillRect(screenX, screenY, TILE, TILE);
@@ -400,7 +311,6 @@
         ctx.lineTo(screenX + TILE - 4, screenY + 20);
         ctx.stroke();
       }
-
       if (tileType === 2) {
         ctx.fillStyle = "#e8d4b8";
         ctx.fillRect(screenX, screenY, TILE, TILE);
@@ -414,7 +324,6 @@
         ctx.lineTo(screenX + TILE, screenY + 16);
         ctx.stroke();
       }
-
       if (tileType === 3) {
         ctx.fillStyle = "#4a90e2";
         ctx.fillRect(screenX, screenY, TILE, TILE);
@@ -425,7 +334,6 @@
         ctx.quadraticCurveTo(screenX + 20, screenY + 12, screenX + TILE - 2, screenY + 8);
         ctx.fill();
       }
-
       if (tileType === 4) {
         ctx.fillStyle = "#7bc916";
         ctx.fillRect(screenX, screenY, TILE, TILE);
@@ -434,16 +342,11 @@
           const angle = (i / 5) * Math.PI * 2;
           const fx = screenX + TILE / 2 + Math.cos(angle) * 5;
           const fy = screenY + TILE / 2 + Math.sin(angle) * 5;
-          ctx.beginPath();
-          ctx.arc(fx, fy, 2, 0, Math.PI * 2);
-          ctx.fill();
+          ctx.beginPath(); ctx.arc(fx, fy, 2, 0, Math.PI * 2); ctx.fill();
         }
         ctx.fillStyle = "#ffff00";
-        ctx.beginPath();
-        ctx.arc(screenX + TILE / 2, screenY + TILE / 2, 1.5, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.beginPath(); ctx.arc(screenX + TILE / 2, screenY + TILE / 2, 1.5, 0, Math.PI * 2); ctx.fill();
       }
-
       if (tileType === 5) {
         ctx.fillStyle = "#a8a8a8";
         ctx.fillRect(screenX, screenY, TILE, TILE);
@@ -453,7 +356,6 @@
         ctx.lineWidth = 1;
         ctx.strokeRect(screenX + 2, screenY + 2, TILE - 4, TILE - 4);
       }
-
       if (tileType === 6) {
         ctx.fillStyle = "#6b4423";
         ctx.fillRect(screenX, screenY, TILE, TILE);
@@ -464,16 +366,13 @@
           ctx.fillRect(screenX + 4 + i * 12, screenY + 20, 8, 4);
         }
       }
-
       if (tileType === 7) {
         ctx.fillStyle = "#8b4513";
         ctx.fillRect(screenX, screenY, TILE, TILE);
         ctx.fillStyle = "#654321";
         ctx.fillRect(screenX + 2, screenY + 2, TILE - 4, TILE - 4);
         ctx.fillStyle = "#d4af37";
-        ctx.beginPath();
-        ctx.arc(screenX + TILE - 6, screenY + TILE / 2, 2, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.beginPath(); ctx.arc(screenX + TILE - 6, screenY + TILE / 2, 2, 0, Math.PI * 2); ctx.fill();
         ctx.strokeStyle = "#654321";
         ctx.lineWidth = 1;
         ctx.beginPath();
@@ -481,7 +380,6 @@
         ctx.lineTo(screenX + TILE / 2, screenY + TILE - 3);
         ctx.stroke();
       }
-
       if (tileType === 8) {
         ctx.fillStyle = "#3a7d44";
         ctx.beginPath();
@@ -490,24 +388,21 @@
         ctx.fillStyle = "rgba(255,255,255,0.15)";
         ctx.fillRect(screenX + 6, screenY + 6, 8, 8);
       }
-
       if (tileType === 9) {
         ctx.fillStyle = "#8b6914";
         ctx.fillRect(screenX + 2, screenY + 6, TILE - 4, 4);
         ctx.fillRect(screenX + 8, screenY + 2, 4, TILE - 4);
         ctx.fillRect(screenX + 20, screenY + 2, 4, TILE - 4);
       }
-
       if (tileType === 10) {
         ctx.fillStyle = "#8b6914";
         ctx.fillRect(screenX + 12, screenY + 20, 8, 12);
         ctx.fillStyle = "#d4af37";
         ctx.fillRect(screenX + 6, screenY + 4, 20, 12);
-        ctx.fillStyle = "#000000";
+        ctx.fillStyle = "#000";
         ctx.font = "8px Arial";
         ctx.fillText("INN", screenX + 10, screenY + 12);
       }
-
       if (tileType === 11) {
         ctx.fillStyle = "#8b6914";
         ctx.fillRect(screenX, screenY, TILE, TILE);
@@ -546,7 +441,6 @@
       let legOffsetY = 0;
       if (player.isWalking) legOffsetY = player.walkFrame === 0 ? 0 : 2;
 
-      // cape behind
       ctx.fillStyle = "rgba(214, 59, 140, 0.9)";
       ctx.beginPath();
       ctx.moveTo(screenX - 16, screenY - 4);
@@ -556,13 +450,10 @@
       ctx.closePath();
       ctx.fill();
 
-      // body / shirt
-      ctx.fillStyle = "#f3d18d";
-      ctx.fillRect(screenX - 12, screenY - 8, 24, 16);
+      ctx.fillStyle = "#e6b373";
+      ctx.fillRect(screenX - 10, screenY - 8, 20, 16);
       ctx.fillStyle = "#c78d3d";
-      ctx.fillRect(screenX - 10, screenY + 8, 20, 10);
-
-      // legs
+      ctx.fillRect(screenX - 8, screenY + 8, 16, 10);
       ctx.fillStyle = "#a66b2a";
       ctx.fillRect(screenX - 8, screenY + 18 + legOffsetY, 7, 18 - legOffsetY);
       ctx.fillRect(screenX + 1, screenY + 18 + (player.walkFrame === 0 ? 0 : -2), 7, 18 + (player.walkFrame === 0 ? 0 : 2));
@@ -570,48 +461,22 @@
       ctx.fillRect(screenX - 9, screenY + 35, 8, 4);
       ctx.fillRect(screenX + 1, screenY + 35, 8, 4);
 
-      // arms
-      ctx.fillStyle = "#e6b373";
-      ctx.fillRect(screenX - 18, screenY + 1, 6, 12);
-      ctx.fillRect(screenX + 12, screenY + 1, 6, 12);
-
-      // head base and ears
       ctx.fillStyle = "#e6b373";
       ctx.beginPath();
       ctx.ellipse(screenX, screenY - 20, 13, 17, 0, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.beginPath();
-      ctx.moveTo(screenX - 11, screenY - 31);
-      ctx.lineTo(screenX - 7, screenY - 43);
-      ctx.lineTo(screenX - 3, screenY - 31);
-      ctx.closePath();
-      ctx.fill();
-
+      ctx.moveTo(screenX - 11, screenY - 31); ctx.lineTo(screenX - 7, screenY - 43); ctx.lineTo(screenX - 3, screenY - 31); ctx.closePath(); ctx.fill();
       ctx.beginPath();
-      ctx.moveTo(screenX + 11, screenY - 31);
-      ctx.lineTo(screenX + 7, screenY - 43);
-      ctx.lineTo(screenX + 3, screenY - 31);
-      ctx.closePath();
-      ctx.fill();
+      ctx.moveTo(screenX + 11, screenY - 31); ctx.lineTo(screenX + 7, screenY - 43); ctx.lineTo(screenX + 3, screenY - 31); ctx.closePath(); ctx.fill();
 
-      // inner ears
       ctx.fillStyle = "#f4d7d7";
       ctx.beginPath();
-      ctx.moveTo(screenX - 10, screenY - 30);
-      ctx.lineTo(screenX - 7, screenY - 39);
-      ctx.lineTo(screenX - 4, screenY - 30);
-      ctx.closePath();
-      ctx.fill();
-
+      ctx.moveTo(screenX - 10, screenY - 30); ctx.lineTo(screenX - 7, screenY - 39); ctx.lineTo(screenX - 4, screenY - 30); ctx.closePath(); ctx.fill();
       ctx.beginPath();
-      ctx.moveTo(screenX + 10, screenY - 30);
-      ctx.lineTo(screenX + 7, screenY - 39);
-      ctx.lineTo(screenX + 4, screenY - 30);
-      ctx.closePath();
-      ctx.fill();
+      ctx.moveTo(screenX + 10, screenY - 30); ctx.lineTo(screenX + 7, screenY - 39); ctx.lineTo(screenX + 4, screenY - 30); ctx.closePath(); ctx.fill();
 
-      // crown
       ctx.fillStyle = "#f4d35e";
       ctx.fillRect(screenX - 16, screenY - 40, 32, 5);
       ctx.fillStyle = "#e5b700";
@@ -623,13 +488,11 @@
         ctx.lineTo(x + 6, screenY - 40);
         ctx.fill();
       }
-
       ctx.fillStyle = "#ff5ea8";
       ctx.beginPath(); ctx.arc(screenX - 6, screenY - 39, 2, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = "#4cc9f0";
       ctx.beginPath(); ctx.arc(screenX + 6, screenY - 39, 2, 0, Math.PI * 2); ctx.fill();
 
-      // face eyes
       ctx.fillStyle = "#1c1c1c";
       if (player.facing === "left") {
         ctx.fillRect(screenX - 8, screenY - 20, 3, 4);
@@ -656,39 +519,30 @@
       ctx.arc(screenX, screenY - 10, 4, 0, Math.PI);
       ctx.stroke();
 
-      // whiskers
+      ctx.strokeStyle = "#1c1c1c";
+      ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(screenX - 11, screenY - 15);
-      ctx.lineTo(screenX - 18, screenY - 14);
-      ctx.moveTo(screenX - 11, screenY - 12);
-      ctx.lineTo(screenX - 18, screenY - 9);
-      ctx.moveTo(screenX + 11, screenY - 15);
-      ctx.lineTo(screenX + 18, screenY - 14);
-      ctx.moveTo(screenX + 11, screenY - 12);
-      ctx.lineTo(screenX + 18, screenY - 9);
+      ctx.moveTo(screenX - 11, screenY - 15); ctx.lineTo(screenX - 18, screenY - 14);
+      ctx.moveTo(screenX - 11, screenY - 12); ctx.lineTo(screenX - 18, screenY - 9);
+      ctx.moveTo(screenX + 11, screenY - 15); ctx.lineTo(screenX + 18, screenY - 14);
+      ctx.moveTo(screenX + 11, screenY - 12); ctx.lineTo(screenX + 18, screenY - 9);
       ctx.stroke();
 
-      // sword
-      ctx.strokeStyle = "#d9ba72";
-      ctx.lineWidth = 3;
+      ctx.fillStyle = "#d9ba72";
       if (player.facing === "right") {
         ctx.beginPath();
         ctx.moveTo(screenX + 18, screenY - 2);
         ctx.lineTo(screenX + 30, screenY - 18);
         ctx.stroke();
         ctx.fillStyle = "#ffd75e";
-        ctx.beginPath();
-        ctx.arc(screenX + 30, screenY - 18, 3, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.beginPath(); ctx.arc(screenX + 30, screenY - 18, 3, 0, Math.PI * 2); ctx.fill();
       } else if (player.facing === "left") {
         ctx.beginPath();
         ctx.moveTo(screenX - 18, screenY - 2);
         ctx.lineTo(screenX - 30, screenY - 18);
         ctx.stroke();
         ctx.fillStyle = "#ffd75e";
-        ctx.beginPath();
-        ctx.arc(screenX - 30, screenY - 18, 3, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.beginPath(); ctx.arc(screenX - 30, screenY - 18, 3, 0, Math.PI * 2); ctx.fill();
       }
     }
 
