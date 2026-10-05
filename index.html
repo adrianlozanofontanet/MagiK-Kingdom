@@ -92,24 +92,30 @@ const TXT = {
 const TUT = {
   despierto: '(¿Una isla desierta...? ¿Cómo he llegado hasta aquí?)',
   mover: '(Bueno, primero lo primero: puedo moverme con las flechas.)',
-  atacar: '(Con la tecla A golpeo con mi espada. Si corto la hierba, saldrán monedas.)',
+  atacar: '(Con la tecla A golpeo hacia delante con mi espada. Y si me pongo encima de la hierba alta y golpeo, la corto y salen monedas.)',
   menu: '(Las monedas las veré luego en el menú, con la tecla M.)',
-  palmera: '(¡Una palmera con cocos! Si golpeo el tronco con A, caerán al suelo.)',
+  palmera: '(¡Una palmera con cocos! Si la golpeo de frente con A, caerán al suelo.)',
   cocosCaen: '(¡Han caído cocos! Los reconoceré por la exclamación amarilla. Me basta con pisarlos para recogerlos.)',
   cocoPick: '(¡Tengo un coco! Lo veré en Comida, dentro del menú.)',
-  faltanMonedas: '(Antes de irme debería cortar algo de hierba con A para conseguir monedas.)',
+  faltanMonedas: '(Antes de irme debería cortar algo de hierba: me pongo encima de ella y golpeo con A.)',
   balsa: '(¡Mira! Una balsa ha llegado a la orilla. Es mi oportunidad de salir de esta isla.)',
   irse: '(Rumbo a tierra firme... ¡Y a por la Perla!)',
-  aldea1: '(¡Una aldea! Para entrar en una casa me pongo frente a su puerta y pulso E.)',
-  aldea2: '(Dicen que el sabio de los dragones vive en el edificio morado, y el mapache de las misiones, en la casa del cartel.)',
-  hierba: '(Aquí también puedo cortar hierba y golpear árboles. Con el tiempo, todo vuelve a crecer.)',
-  rotonda: '(¡Qué árbol más inmenso! Es azul... debe de tener mil años.)',
-  rotonda2: '(Hay muchos caminos, pero casi todos están cerrados. Solo dos siguen abiertos.)'
+  fin: '(Una aldea muy curiosa... y mucho que hacer. Empezaré visitando las casas.)',
+  rotonda: '(Una gran plaza con un pozo y un árbol inmenso de hojas verde azuladas... debe de tener mil años.)',
+  rotonda2: '(Hay muchos caminos, pero casi todos están cerrados. Solo dos siguen abiertos.)',
+  grass: '(Para cortar la hierba alta tengo que ponerme encima de ella y golpear con A.)'
 };
 const TT = {                                       // lo que dice Ken al interactuar con estas cosas
-  AZ: ['(El árbol azul milenario... Dicen que tiene mil años y que escucha a quien se acerca.)', '(Sus raíces brillan con una luz azul muy tenue. No me atrevo a dañarlo.)'],
+  AZ: ['(El árbol milenario, de hojas verde azuladas... Dicen que tiene mil años y que escucha a quien se acerca.)', '(Sus raíces brillan con una luz tenue. No me atrevo a dañarlo.)'],
   bar: ['(Una barrera mágica. Un resplandor morado me impide el paso.)', '(Este camino está bloqueado. Quizá más adelante...)']
 };
+const WISHES = [
+  '(Deseo que mi viaje termine bien.)',
+  '(Deseo encontrar la Perla antes que él.)',
+  '(Deseo volver a ver el cielo de mi casa.)',
+  '(Deseo que nadie más pase miedo por culpa de la sombra.)',
+  '(Deseo... un buen plato de sopa caliente.)'
+];
 const QUIZ = [
   { q: 'Un monstruo gigante bloquea el camino del pueblo. ¿Qué haces?', a: [
     { t: 'Me escondo y observo',       k: 'agua' },
@@ -138,13 +144,45 @@ const DESC = {
   tierra: 'Es un dragón de TIERRA: leal y protector. Su fuerza defiende a los suyos. Cuídalo bien.',
   aire:   'Es un dragón de AIRE: libre y veloz. Nadie puede atraparlo. Cuídalo bien.'
 };
+// Entrada a la aldea: lo que se habla al llegar (quién, cara, texto)
+const WELCOME = [
+  ['voces', 'normal', '¡Mirad! ¡Alguien ha llegado desde el mar!'],
+  ['voces', 'normal', '¿Es él? ¿Es el muchacho del que habla la anciana Elda?'],
+  ['voces', 'normal', 'No lo sé... pero lleva una espada a la espalda.'],
+  ['anciana', 'serio', 'Silencio, silencio. Dejadme hablar a mí.'],
+  ['anciana', 'feliz', 'Bienvenido a Rowan, joven. Soy Elda, la más vieja de esta aldea.'],
+  ['anciana', 'normal', 'Hace tres días que el mar escupe tablas y cosas extrañas en la orilla... y hoy, por fin, llegas tú.'],
+  ['ken', 'sorpresa', '¿Rowan? ¿Cómo sabéis...? Yo ni siquiera sé cómo acabé en esa isla desierta.'],
+  ['anciana', 'serio', 'Eso es lo de menos. Lo importante es lo que viene detrás de ti: una sombra.'],
+  ['ken', 'serio', '¿Una sombra? He soñado con ella... Un chico negro como la noche, con los brazos en alto.'],
+  ['anciana', 'serio', 'El mismo. Lleva semanas buscando la Perla del fondo del mar.'],
+  ['anciana', 'serio', 'Quien la tenga podrá dominar el mundo entero.'],
+  ['ken', 'sorpresa', '¡¿Y por qué me lo cuentas a mí?!'],
+  ['anciana', 'feliz', 'Porque el mar te trajo hasta aquí, y el mar nunca se equivoca. Además, esa espada no es de adorno.'],
+  ['voces', 'normal', '¡Cuéntale lo del sabio, Elda! ¡Cuéntale lo del sabio!'],
+  ['anciana', 'normal', 'Voy, voy... Sí, sé tu nombre, Ken: lo leí en las olas. En el edificio morado vive el Sabio de los dragones.'],
+  ['anciana', 'normal', 'Pregúntale lo que quieras... y prepárate para responderle con el corazón.'],
+  ['ken', 'normal', '¿Dragones? Cada vez entiendo menos...'],
+  ['anciana', 'normal', 'En la casa del cartel grande vive el mapache de las misiones. Hay uno en cada aldea.'],
+  ['anciana', 'feliz', 'Sus encargos te harán más fuerte... y más conocido.'],
+  ['anciana', 'serio', 'Al sur, bajando por el camino, hay una gran plaza con un pozo de los deseos y un árbol milenario de hojas verde azuladas.'],
+  ['anciana', 'serio', 'De allí salen muchos caminos, pero casi todos están cerrados desde que apareció la sombra.'],
+  ['ken', 'normal', '¿Cuántos siguen abiertos?'],
+  ['anciana', 'normal', 'Solo dos. Uno lleva a Ciudad Ígnea, donde todo se compra, se vende y se cuchichea.'],
+  ['anciana', 'serio', 'El otro, al Bosque Rowan, donde desaparecen los hongos brillantes... y, a veces, la gente.'],
+  ['ken', 'serio', 'Entendido. Primero conoceré a los aldeanos y al Sabio.'],
+  ['anciana', 'feliz', 'Así se habla. Las puertas de Rowan están abiertas: para entrar, ponte frente a una y pulsa E.'],
+  ['anciana', 'normal', 'Y otra cosa: la hierba alta se corta pisándola y golpeando con A; a los árboles se les golpea de frente.'],
+  ['anciana', 'normal', 'Todo vuelve a crecer con el tiempo. Ahora debo irme: la sopa no se hace sola. ¡Suerte, Ken!'],
+  ['voces', 'normal', '¡Suerte, Ken!']
+];
 
 const GROW_MS = 10 * 60 * 1000;     // hierba, árboles y cocos vuelven a crecer cada 10 minutos
 const dragon = { type: null };
 const stats = { vida: 5, vidaMax: 5, magia: 1, magiaMax: 5, fuerza: 2, fuerzaMax: 5, monedas: 0 };
 const inv = { coco: 0, manzana: 0 };
 const NAMES = { coco: 'Coco', manzana: 'Manzana' };
-const tut = { palmHint: false, cocosHint: false, cocoPicked: false, coinHint: false, raft: false, rotonda: false };
+const tut = { palmHint: false, cocosHint: false, cocoPicked: false, coinHint: false, raft: false, rotonda: false, bienvenida: false, grassHint: false };
 let equipped = 'espada';
 
 // ------------------------------------------------------------
@@ -324,6 +362,22 @@ function drawSage(R, f) {
   R(3,4,10,2,Pd); R(3,4,10,1,Pl); R(8,2,1,1,'#fff6b0');
 }
 
+// ------------------------------------------------------------
+//  LA ANCIANA ELDA (da la bienvenida en la aldea)
+// ------------------------------------------------------------
+function drawElder(R, f) {
+  const S = '#f0c8a0', Sd = '#d09870', H = '#f4f4f8', HD = '#cfcfe0';
+  const D = '#4a7a6a', Dd = '#355a4e', SH = '#8a5a7a', SL = '#aa7a9a', EY = '#1b1b2a';
+  R(13,9,1,14,'#7a5230'); R(12,8,3,1,'#7a5230');                                       // bastón
+  R(4,13,8,9,D); R(3,19,10,3,D); R(3,21,10,1,Dd); R(4,13,8,1,'#5a9a8a');               // vestido
+  R(3,12,10,4,SH); R(3,12,10,1,SL); R(5,15,6,1,Dd);                                     // chal
+  R(2,13,2,6,SH); R(12,13,1,5,SH); R(2,19,2,1,S); R(12,18,2,1,S);                      // brazos y manos
+  R(4,22,3,2,'#4e3220'); R(9,22,3,2,'#4e3220');                                         // zapatos
+  R(5,5+f,6,7,S); R(4,3+f,8,3,H); R(6,1+f,4,3,H); R(4,5+f,1,5,H); R(11,5+f,1,5,H);      // cabeza, pelo y moño
+  R(6,2+f,1,1,HD); R(6,8+f,1,1,EY); R(9,8+f,1,1,EY); R(6,7+f,2,1,HD); R(8,7+f,2,1,HD);
+  R(7,10+f,2,1,'#b86a4a'); R(5,9+f,1,1,Sd); R(10,9+f,1,1,Sd);
+}
+
 const spriteCache = {};
 function getSprite(dir, pose, flame) {
   const key = dir + pose + flame;
@@ -345,7 +399,7 @@ function npcSprite(kind, f) {
   c.width = 18; c.height = 26;
   const x = c.getContext('2d');
   const R = (a, b, w, h, col) => { x.fillStyle = col; x.fillRect(a + 1, b + 1, w, h); };
-  if (kind === 'sage') drawSage(R, f); else drawRaccoon(R, f);
+  if (kind === 'sage') drawSage(R, f); else if (kind === 'elder') drawElder(R, f); else drawRaccoon(R, f);
   outline(c);
   return (spriteCache[key] = c);
 }
@@ -440,7 +494,26 @@ function pSage(R, face) {
     R(12,12,2,2,EY); R(19,12,2,2,EY); R(11,10,5,2,WH); R(17,10,5,2,WH);
   }
 }
-const PORTRAIT_FN = { raccoon: pRaccoon, ken: pKen, sage: pSage };
+function pElder(R, face) {
+  const S='#f0c8a0', Sd='#d09870', H='#f4f4f8', HD='#cfcfe0', SH='#8a5a7a', SL='#aa7a9a', EY='#1b1b2a';
+  R(2,26,28,6,SH); R(2,26,28,1,SL); R(12,24,8,3,S); R(12,26,8,1,Sd);
+  R(8,2,16,4,H); R(10,0,12,3,H); R(5,6,4,16,H); R(23,6,4,16,H); R(11,0,3,1,HD);       // pelo blanco y moño
+  R(8,6,16,18,S); R(8,6,16,2,H); R(8,8,3,3,H); R(21,8,3,3,H);                          // cara y flequillo
+  R(15,18,2,1,Sd); R(9,19,2,1,'#e8a090'); R(21,19,2,1,'#e8a090'); R(9,16,1,1,Sd); R(22,16,1,1,Sd);
+  if (face === 'feliz') {
+    R(10,15,1,1,EY); R(11,14,2,1,EY); R(13,15,1,1,EY); R(18,15,1,1,EY); R(19,14,2,1,EY); R(21,15,1,1,EY);
+    R(10,12,4,1,HD); R(18,12,4,1,HD); R(13,21,1,1,'#b86a4a'); R(14,22,4,1,'#b86a4a'); R(18,21,1,1,'#b86a4a');
+  } else if (face === 'sorpresa') {
+    R(10,13,4,4,'#ffffff'); R(18,13,4,4,'#ffffff'); R(11,14,2,2,EY); R(19,14,2,2,EY);
+    R(10,11,4,1,HD); R(18,11,4,1,HD); R(15,21,2,3,'#5a1a1a');
+  } else if (face === 'serio') {
+    R(11,14,2,2,EY); R(19,14,2,2,EY);
+    R(10,12,2,1,HD); R(12,13,2,1,HD); R(20,12,2,1,HD); R(18,13,2,1,HD); R(14,22,4,1,'#8a4a3a');
+  } else {
+    R(11,14,2,2,EY); R(19,14,2,2,EY); R(10,12,4,1,HD); R(18,12,4,1,HD); R(14,21,4,1,'#b86a4a');
+  }
+}
+const PORTRAIT_FN = { raccoon: pRaccoon, ken: pKen, sage: pSage, elder: pElder };
 const portraitCache = {};
 function getPortrait(kind, face) {
   const key = kind + '|' + face;
@@ -658,12 +731,11 @@ function buildLogo() {
   const mc = document.createElement('canvas').getContext('2d'); mc.font = font;
   const w1 = mc.measureText('JOYB').width, w2 = mc.measureText('T').width;
   const gap = Math.round(fs * 0.6), pad = Math.round(fs * 0.5);
-  const cw = Math.ceil(w1 + gap + w2 + pad * 2), base = Math.round(pad + fs * 1.15), ch = Math.ceil(base + fs * 0.75 + pad);
+  const cw2 = Math.ceil(w1 + gap + w2 + pad * 2), base = Math.round(pad + fs * 1.15), ch = Math.ceil(base + fs * 0.75 + pad);
   const x1 = pad, x2 = pad + w1 + gap, scx = pad + w1 + gap / 2, top = base - fs * 0.8;
   let sd = 11; const rn = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
 
-  // borde blanco desgastado (con muescas)
-  const A = document.createElement('canvas'); A.width = cw; A.height = ch;
+  const A = document.createElement('canvas'); A.width = cw2; A.height = ch;
   const a = A.getContext('2d');
   a.font = font; a.lineJoin = 'miter'; a.miterLimit = 3;
   a.lineWidth = Math.max(4, Math.round(fs * 0.15)); a.strokeStyle = '#f4f4f8';
@@ -674,12 +746,12 @@ function buildLogo() {
     a.fillRect(x1 + rn() * (w1 + gap + w2), top - fs * 0.1 + rn() * fs * 0.95, s * (1 + rn() * 2.5), s);
   }
 
-  const c = document.createElement('canvas'); c.width = cw; c.height = ch;
+  const c = document.createElement('canvas'); c.width = cw2; c.height = ch;
   const x = c.getContext('2d');
   x.drawImage(A, 0, 0);
-  x.font = font; x.fillStyle = '#050507';                                   // interior negro
+  x.font = font; x.fillStyle = '#050507';
   x.fillText('JOYB', x1, base); x.fillText('T', x2, base);
-  x.globalCompositeOperation = 'source-atop';                               // arañazos
+  x.globalCompositeOperation = 'source-atop';
   x.strokeStyle = 'rgba(255,255,255,0.65)';
   for (let i = 0; i < 90; i++) {
     const px = x1 + rn() * (w1 + gap + w2), py = top + rn() * fs * 0.8, l = fs * (0.03 + rn() * 0.07);
@@ -687,7 +759,6 @@ function buildLogo() {
   }
   x.globalCompositeOperation = 'source-over';
 
-  // la espada (la "I"), apuntando hacia abajo
   const gy = top - fs * 0.02, bw = fs * 0.06, tipY = base + fs * 0.45;
   const poly = (pts, fillStyle) => {
     x.beginPath(); pts.forEach(([px, py], i) => i ? x.lineTo(px, py) : x.moveTo(px, py)); x.closePath();
@@ -697,23 +768,22 @@ function buildLogo() {
   gr.addColorStop(0, '#f2f2f8'); gr.addColorStop(0.5, '#b4b4c2'); gr.addColorStop(1, '#6a6a78');
   poly([[scx - bw, gy + fs * 0.06], [scx + bw, gy + fs * 0.06], [scx + bw * 0.8, base + fs * 0.2], [scx, tipY], [scx - bw * 0.8, base + fs * 0.2]], gr);
   x.strokeStyle = '#2a2a34'; x.lineWidth = Math.max(1, fs * 0.015);
-  x.beginPath(); x.moveTo(scx, gy + fs * 0.12); x.lineTo(scx, base + fs * 0.3); x.stroke();      // canal de la hoja
+  x.beginPath(); x.moveTo(scx, gy + fs * 0.12); x.lineTo(scx, base + fs * 0.3); x.stroke();
   const wing = s => [[scx + s * bw * 1.2, gy - fs * 0.03], [scx + s * fs * 0.30, gy - fs * 0.09], [scx + s * fs * 0.52, gy - fs * 0.17],
     [scx + s * fs * 0.46, gy - fs * 0.04], [scx + s * fs * 0.42, gy + fs * 0.02], [scx + s * fs * 0.34, gy - fs * 0.01],
     [scx + s * fs * 0.30, gy + fs * 0.07], [scx + s * fs * 0.22, gy + fs * 0.03], [scx + s * fs * 0.14, gy + fs * 0.10],
     [scx + s * fs * 0.08, gy + fs * 0.05], [scx + s * bw * 1.2, gy + fs * 0.07]];
-  poly(wing(-1), '#d4d4de'); poly(wing(1), '#d4d4de');                                          // guarda con alas
+  poly(wing(-1), '#d4d4de'); poly(wing(1), '#d4d4de');
   poly([[scx - fs * 0.035, gy - fs * 0.30], [scx + fs * 0.035, gy - fs * 0.30], [scx + fs * 0.035, gy - fs * 0.03], [scx - fs * 0.035, gy - fs * 0.03]], '#46465a');
   x.strokeStyle = '#d4d4de'; x.lineWidth = Math.max(1, fs * 0.012);
   for (let i = 0; i < 4; i++) { const yy = gy - fs * 0.27 + i * fs * 0.065; x.beginPath(); x.moveTo(scx - fs * 0.035, yy); x.lineTo(scx + fs * 0.035, yy + fs * 0.03); x.stroke(); }
-  x.beginPath(); x.arc(scx, gy - fs * 0.36, fs * 0.06, 0, Math.PI * 2);                         // pomo
+  x.beginPath(); x.arc(scx, gy - fs * 0.36, fs * 0.06, 0, Math.PI * 2);
   x.fillStyle = '#c8c8d4'; x.fill(); x.lineWidth = Math.max(2, fs * 0.02); x.strokeStyle = '#050507'; x.stroke();
   poly([[scx - fs * 0.02, gy - fs * 0.41], [scx + fs * 0.02, gy - fs * 0.41], [scx, gy - fs * 0.5]], '#c8c8d4');
-  x.globalCompositeOperation = 'destination-out';                                               // la espada, gastada
+  x.globalCompositeOperation = 'destination-out';
   for (let i = 0; i < 9; i++) x.fillRect(scx - bw * 0.95 + (rn() < 0.5 ? 0 : bw * 1.7), base - fs * 0.55 + rn() * fs * 0.85, fs * 0.025, fs * 0.03);
   x.globalCompositeOperation = 'source-over';
 
-  // STUDIOS
   const sf = Math.round(fs * 0.17);
   x.font = '700 ' + sf + 'px Arial, Helvetica, sans-serif'; x.fillStyle = '#f2f2f6'; x.textBaseline = 'alphabetic';
   const sp = sf * 0.55, letters = 'STUDIOS'.split('');
@@ -725,21 +795,21 @@ function buildLogo() {
 function drawSplashHi() {
   const t = splash.t, c = buildLogo();
   let a = t < 1.0 ? 0 : t < 3.4 ? (t - 1.0) / 2.4 : t < 5.4 ? 1 : Math.max(0, 1 - (t - 5.4) / 1.2);
-  if (t >= 1.0 && t < 3.4) a *= (Math.sin(t * 31) > -0.55 ? 1 : 0.3) * (0.75 + 0.25 * Math.sin(t * 7));   // parpadeo siniestro
+  if (t >= 1.0 && t < 3.4) a *= (Math.sin(t * 31) > -0.55 ? 1 : 0.3) * (0.75 + 0.25 * Math.sin(t * 7));
   const W2 = ui.width, H2 = ui.height, cx = W2 / 2, cy = H2 * 0.46;
   u.setTransform(1, 0, 0, 1, 0, 0);
-  for (let i = 0; i < 3; i++) {                                                   // niebla fría muy tenue
+  for (let i = 0; i < 3; i++) {
     const fx = cx + Math.sin(t * 0.25 + i * 2) * W2 * 0.18, fy = cy + (i - 1) * H2 * 0.08, r = W2 * 0.32;
     const gr = u.createRadialGradient(fx, fy, 0, fx, fy, r);
     gr.addColorStop(0, 'rgba(70,76,100,' + (0.16 * a) + ')'); gr.addColorStop(1, 'rgba(0,0,0,0)');
     u.globalAlpha = 1; u.fillStyle = gr; u.fillRect(0, 0, W2, H2);
   }
-  const pulse = (t > 3.4 && t < 4.3) ? 1 + 0.025 * Math.sin((t - 3.4) / 0.9 * Math.PI) : 1;   // pulso épico
+  const pulse = (t > 3.4 && t < 4.3) ? 1 + 0.025 * Math.sin((t - 3.4) / 0.9 * Math.PI) : 1;
   const fit = Math.min(1, W2 * 0.86 / c.width, H2 * 0.7 / c.height);
   const dw = c.width * fit * pulse, dh = c.height * fit * pulse;
   u.globalAlpha = a; u.drawImage(c, cx - dw / 2, cy - dh / 2, dw, dh);
-  if (t > 3.4 && t < 3.9) { u.globalAlpha = (1 - (t - 3.4) / 0.5) * 0.25 * a; u.fillStyle = '#c8d0ff'; u.fillRect(0, cy - 2, W2, 4); }   // destello
-  for (let i = 0; i < 16; i++) {                                                  // brasas frías
+  if (t > 3.4 && t < 3.9) { u.globalAlpha = (1 - (t - 3.4) / 0.5) * 0.25 * a; u.fillStyle = '#c8d0ff'; u.fillRect(0, cy - 2, W2, 4); }
+  for (let i = 0; i < 16; i++) {
     const ph = (t * 0.18 + i / 16) % 1;
     const ex = cx + (hash(i, 5) % 100 - 50) / 100 * dw * 0.6 + Math.sin(t + i) * 8, ey = cy + dh * 0.4 - ph * dh * 0.9;
     u.globalAlpha = Math.sin(ph * Math.PI) * 0.7 * a; u.fillStyle = i % 3 ? '#9aa0b8' : '#d8c8a8';
@@ -826,19 +896,11 @@ function drawCastle(cx, gy, s, t) {
   const px = Math.round(cx), py = Math.round(gy - 42 * s);
   g.fillStyle = '#0c0826'; g.fillRect(px, py - 5 * s, 1, 5 * s);
   for (let i = 0; i < 7; i++) { g.fillStyle = i < 4 ? '#c080ff' : '#7a2fd1'; g.fillRect(px + 1 + i, py - 5 * s + Math.round(Math.sin(t * 5 + i * 0.8)), 1, 2); }
-  drawPearl(px, py - 5 * s - 12, 3, 2, t);
 }
 function pine(x, by, h) {
   g.fillStyle = '#07051a';
   for (let i = 0; i < h; i++) { const w = Math.floor(i * 0.35) + 1; g.fillRect(x - w, by - h + i, w * 2 + 1, 1); }
   g.fillRect(x - 1, by, 3, Math.floor(h * 0.15));
-}
-function drawDragonSil(x, y, s, flap) {
-  g.fillStyle = '#0a0620';
-  const r = (a, b, w, h) => g.fillRect(Math.round(x + a * s), Math.round(y + b * s), Math.max(1, w * s), Math.max(1, h * s));
-  r(0,3,9,3); r(9,2,4,3); r(13,3,2,1); r(-7,4,7,1); r(-10,5,3,1); r(-12,4,2,2);
-  if (flap) { r(3,-3,2,6); r(1,-5,6,2); r(5,-4,3,2); } else { r(3,6,2,5); r(1,10,6,2); r(5,9,3,2); }
-  g.fillStyle = '#c080ff'; r(11,3,1,1);
 }
 const title = { on: true, t: 0, sel: 0, confirm: false, csel: 1, msg: '', mode: 'main', action: 'new', slotSel: 0, slots: [] };
 const titleParts = [];
@@ -892,7 +954,6 @@ function drawTitle() {
     }
   });
   for (let i = 0; i < 3; i++) pixelEllipse(((t * 5 + i * 150) % (W + 200)) - 100, H * (0.20 + 0.07 * i), 46, 4, '#3a2a70', 0.55);
-  drawDragonSil(((t * 12) % (W + 120)) - 60, H * 0.30 + Math.sin(t * 1.3) * 5, 2, Math.floor(t * 4) % 2 === 0);
   ridge(1, H * 0.66, H * 0.16, '#2a2268'); ridge(2, H * 0.74, H * 0.13, '#1c1650');
   pixelEllipse(cx, H * 0.84, W * 0.3, H * 0.14, '#120e38', 1);
   drawCastle(cx, Math.round(H * 0.72), Math.max(2, Math.round(H / 110)), t);
@@ -912,8 +973,6 @@ function drawTitle() {
   bigText('KINGDOM', cx, ly + 7 * sB + sB + 2, sK, t, false);
   if (Math.sin(t * 4) > 0) sparkle(cx - tw / 2 - 6, ly + 3, 2, '#ffffff');
   if (Math.sin(t * 4 + 2) > 0) sparkle(cx + tw / 2 + 6, ly + 10, 2, '#ffe27a');
-  const sub = 'Un reino de magia, dragones y una Perla';
-  stext(sub, Math.round(cx - textW(sub) / 2), ly + 7 * sB + sB + 2 + 7 * sK + 5, '#e8d8ff');
 
   const mw = 176, mh = 48, mxx = Math.round(cx - mw / 2), myy = H - mh - 16;
   g.fillStyle = 'rgba(10,6,36,0.78)'; g.fillRect(mxx, myy, mw, mh);
@@ -1090,10 +1149,18 @@ TILES.N = mkTile(x => {
   rc(x, 3, 4, 10, 5, '#c8955a'); rc(x, 3, 8, 10, 1, '#a8743c');
   rc(x, 4, 5, 5, 1, '#6a4524'); rc(x, 4, 7, 7, 1, '#6a4524');
 });
-TILES.AZ = mkTile(x => {                              // corteza del árbol azul milenario (la base)
-  rc(x, 0, 0, 16, 16, '#2a3a6a');
-  for (let a = 1; a < 16; a += 4) { rc(x, a, 0, 1, 16, '#18224a'); rc(x, a + 1, 0, 1, 16, '#4a5aa0'); }
-  rc(x, 0, 0, 16, 1, '#18224a');
+TILES.AZ = mkTile(x => {                              // corteza del árbol milenario verde azulado (la base)
+  rc(x, 0, 0, 16, 16, '#2a4a5a');
+  for (let a = 1; a < 16; a += 4) { rc(x, a, 0, 1, 16, '#16343f'); rc(x, a + 1, 0, 1, 16, '#4a7a8a'); }
+  rc(x, 0, 0, 16, 1, '#16343f');
+});
+TILES.poz = mkTile(x => {                             // POZO DE LOS DESEOS
+  x.drawImage(TILES.S, 0, 0);
+  rc(x, 2, 8, 12, 7, '#8e949e'); rc(x, 3, 7, 10, 1, '#8e949e'); rc(x, 2, 8, 12, 1, '#c4c9d2'); rc(x, 3, 14, 10, 1, '#5c616b');
+  rc(x, 3, 9, 10, 5, '#4a4f58'); rc(x, 4, 9, 8, 4, '#3890f0'); rc(x, 5, 10, 3, 1, '#8ccbff'); rc(x, 9, 11, 2, 1, '#8ccbff');
+  rc(x, 2, 2, 2, 7, '#6a4524'); rc(x, 12, 2, 2, 7, '#6a4524');
+  rc(x, 1, 0, 14, 3, '#8a2a1a'); rc(x, 1, 0, 14, 1, '#c84a3a'); rc(x, 0, 2, 16, 1, '#5a1a10');
+  rc(x, 8, 3, 1, 4, '#e8d4a0'); rc(x, 7, 6, 3, 3, '#a8743c'); rc(x, 7, 6, 3, 1, '#c8955a');
 });
 TILES.bar = mkTile(x => {                             // barrera mágica en los caminos cerrados
   grass(x);
@@ -1357,10 +1424,10 @@ const DOORS = {
   fill(13, 25, 9, 1, 'F'); fill(24, 25, 10, 1, 'F');
   put(21, 24, 'N'); put(12, 9, 'O'); put(12, 21, 'O'); put(34, 12, 'O');
   w.npcs.push({ tx: 21, ty: 24, solid: true, sprite: null, talk: () => say(TXT.cartel, { who: 'cartel' }) });
-  w.exits = [{ x: 22, y: 29, w: 2, h: 1, to: 'rotonda', tx: 28, ty: 2, dir: 'down' }];      // camino al sur → la rotonda
+  w.exits = [{ x: 22, y: 29, w: 2, h: 1, to: 'rotonda', tx: 28, ty: 2, dir: 'down' }];      // camino al sur → la plaza
 })();
 
-// ---- LA ROTONDA DEL ÁRBOL AZUL MILENARIO ----
+// ---- LA PLAZA (ROTONDA) DEL POZO DE LOS DESEOS Y EL ÁRBOL MILENARIO ----
 (function () {
   const w = newWorld('rotonda', 56, 50, '.');
   const cx = 28, cy = 24;
@@ -1391,6 +1458,7 @@ const DOORS = {
   fill(27, 0, 2, 3, 'P');                                        // entrada norte (vuelta a la aldea)
   w.exits.push({ x: 27, y: 0, w: 2, h: 1, to: 'aldea', tx: 22, ty: 27, dir: 'up' });
   fill(cx - 1, cy - 1, 3, 3, 'AZ'); w.giant = { tx: cx, ty: cy };   // base del árbol milenario
+  put(22, 20, 'poz'); w.well = { tx: 22, ty: 20 };                  // pozo de los deseos
 })();
 
 // ---- INTERIORES ----
@@ -1423,7 +1491,7 @@ makeRoom('mago', 12, 10, w => {
   w.npcs.push({ tx: 6, ty: 3, solid: true, sprite: 'sage', mk: 19, marker: () => !dragon.type, talk: () => talkSage() });
 });
 
-const SOLID = new Set(['T','W','Wo','RF','PT','rk','O','F','N','AZ','bar','wl','wn','dr','sg','hs','ms',
+const SOLID = new Set(['T','W','Wo','RF','PT','rk','O','F','N','AZ','poz','bar','wl','wn','dr','sg','hs','ms',
   'rt-u','rb-u','rt-r','rb-r','rt-p','rb-p','rt-n','rb-n',
   'iw','iwn','ib','ibo','sw','bdt','bdb','tb','ch','bk','pl','ks','ct','ca','cr']);
 
@@ -1441,7 +1509,7 @@ function tileImg(w, x, y) {
 }
 function castKind(t) {
   if (t === 'T' || t === 'PT' || t === 'AZ') return 'tree';
-  if (t === 'O' || t === 'F' || t === 'N' || t === 'rk' || t === 'bar') return 'small';
+  if (t === 'O' || t === 'F' || t === 'N' || t === 'rk' || t === 'bar' || t === 'poz') return 'small';
   if (t.startsWith('rt-') || t.startsWith('rb-') || ['wl','wn','dr','sg','hs','ms'].includes(t)) return 'build';
   return null;
 }
@@ -1508,7 +1576,7 @@ const MINI = { '.':'#78c850','f':'#78c850','G':'#3f9a34','Gb':'#4aa23a','S':'#e9
   'W':'#3890f0','Wo':'#3890f0','RF':'#3890f0','O':'#8e949e','F':'#f4f4f4','N':'#c8955a','wl':'#f0e4c4','wn':'#f0e4c4',
   'dr':'#7a4a2a','sg':'#f0e4c4','hs':'#f0e4c4','ms':'#f0e4c4','rt-u':'#4a7fd8','rb-u':'#2f5aa8','rt-r':'#e8742c',
   'rb-r':'#b4501c','rt-p':'#7a4cc0','rb-p':'#523090','rt-n':'#8a5a32','rb-n':'#5e3a1e',
-  'sd':'#f0dc9c','PT':'#2f8a35','rk':'#8e949e','fn':'#3a9a3c','AZ':'#3a6ae0','bar':'#c080ff' };
+  'sd':'#f0dc9c','PT':'#2f8a35','rk':'#8e949e','fn':'#3a9a3c','AZ':'#2fb8a0','poz':'#3890f0','bar':'#c080ff' };
 function getMini(w) {
   if (!w.mini) {
     const ms = Math.max(1, Math.floor(120 / Math.max(w.cols, w.rows)));      // píxeles por casilla
@@ -1597,6 +1665,8 @@ const SPEAK = {
   mapache: { name: 'Mapache', portrait: 'raccoon' },
   sabio:   { name: 'Sabio',   portrait: 'sage' },
   ken:     { name: 'Ken',     portrait: 'ken' },
+  anciana: { name: 'Anciana Elda', portrait: 'elder' },
+  voces:   { name: 'Voces',   portrait: null },
   cartel:  { name: 'Cartel',  portrait: null },
   leyenda: { name: 'Leyenda', portrait: null }
 };
@@ -1640,6 +1710,15 @@ function kenSay(list, done) {
     if (i >= list.length) { if (done) done(); return; }
     const [tx, fc] = list[i++];
     say(tx, { who: 'ken', face: fc, then: next });
+  };
+  next();
+}
+function talkList(list, done) {                    // conversación larga: [quién, cara, texto]
+  let i = 0;
+  const next = () => {
+    if (i >= list.length) { if (done) done(); return; }
+    const [who, face, text] = list[i++];
+    say(text, { who, face, then: next });
   };
   next();
 }
@@ -1753,10 +1832,21 @@ function checkExits() {
   }
 }
 
+// ---- Llegada a la aldea: mucha conversación para meterte en situación ----
+function welcomeScene() {
+  if (tut.bienvenida) return;
+  tut.bienvenida = true; markDirty();
+  const elder = { tx: 22, ty: 19, solid: true, sprite: 'elder', talk: () => say('Ahora no, joven, que estoy hablando...', { who: 'anciana', face: 'serio' }) };
+  cw.npcs.push(elder);
+  talkList(WELCOME, () => {                                      // al terminar, Elda se desvanece en una nube
+    burst(elder.tx * T + 8, elder.ty * T + 8, ['#e8e8f0', '#cfcfe0', '#ffffff', '#8a5a7a'], 26);
+    const i = cw.npcs.indexOf(elder); if (i >= 0) cw.npcs.splice(i, 1);
+    kenSay([[TUT.fin, 'normal']]);
+  });
+}
 function useRaft() {
   kenSay([[TUT.irse, 'normal']], () =>
-    startFade(() => loadWorld('aldea', 22, 20, 'up'), 1.2, () =>
-      kenSay([[TUT.aldea1, 'sorpresa'], [TUT.aldea2, 'normal'], [TUT.hierba, 'feliz']])));
+    startFade(() => loadWorld('aldea', 22, 20, 'up'), 1.2, () => welcomeScene()));
 }
 function addRaftNpc() {
   const w = WORLDS.isla;
@@ -1773,6 +1863,24 @@ function checkTutorial() {
     tut.coinHint = true;
     kenSay([[TUT.faltanMonedas, 'normal']]);
   }
+}
+
+// ---- Pozo de los deseos ----
+function talkWell() {
+  say('(Un pozo de los deseos. Dicen que, si lanzas una moneda, el agua escucha lo que pides.)', { who: 'ken', face: 'normal', opts: [
+    { label: 'Lanzar una moneda', go: tossCoin },
+    { label: 'Marcharme', go: closeD }
+  ] });
+}
+function tossCoin() {
+  if (stats.monedas < 1) { say('(No tengo ninguna moneda que lanzar...)', { who: 'ken', face: 'serio' }); return; }
+  stats.monedas--; markDirty();
+  const w = cw.well;
+  burst(w.tx * T + 8, w.ty * T + 10, ['#8ccbff', '#ffffff', '#ffd84a'], 16);
+  floater(w.tx * T + 8, w.ty * T, '-1', '#ffd84a');
+  const lucky = Math.random() < 0.2;
+  if (lucky) { stats.monedas += 3; floater(w.tx * T + 8, w.ty * T - 8, '+3', '#ffd84a'); }
+  say(WISHES[Math.floor(Math.random() * WISHES.length)] + (lucky ? ' ¡Y el pozo devuelve tres monedas!' : ''), { who: 'ken', face: lucky ? 'sorpresa' : 'feliz' });
 }
 
 const npcAt = (x, y) => npcs.find(n => n.tx === x && n.ty === y);
@@ -1814,6 +1922,7 @@ function interact() {
   if (n) { n.talk(); return; }
   const row = map[ty], t = row ? row[tx] : undefined;
   if (t === 'N' && cw.signs && cw.signs[tx + ',' + ty]) { say(cw.signs[tx + ',' + ty], { who: 'cartel' }); return; }
+  if (t === 'poz') { talkWell(); return; }
   if (t === 'ct') { const n2 = npcAt(tx + dx, ty + dy); if (n2) { n2.talk(); return; } }
   if (t === 'dr' && cw.id === 'aldea') { enterDoor(tx, ty); return; }
   if (t === 'mt') { exitHouse(); return; }
@@ -1826,7 +1935,7 @@ function interact() {
 // ------------------------------------------------------------
 const CATS = ['ARMAS', 'OBJETOS', 'COMIDA'];
 function menuItems(cat) {
-  if (cat === 0) return [{ kind: 'weapon', id: 'espada', name: 'Espada de Ken', desc: 'Tu espada de siempre. Corta la hierba, golpea los árboles y suelta chispas moradas.' }];
+  if (cat === 0) return [{ kind: 'weapon', id: 'espada', name: 'Espada de Ken', desc: 'Tu espada de siempre. Golpea hacia delante, y sobre la hierba alta la corta. Suelta chispas moradas.' }];
   const l = [];
   if (cat === 1) {
     if (dragon.type) l.push({ kind: 'egg', name: 'Huevo de dragón', sub: EGG_COL[dragon.type].n, desc: 'Un huevo de dragón de ' + EGG_COL[dragon.type].n + '. Se mueve de vez en cuando. Cuídalo bien.' });
@@ -1974,7 +2083,7 @@ function pickup(it) {
   if (it.kind === 'coco' && !tut.cocoPicked) { tut.cocoPicked = true; kenSay([[TUT.cocoPick, 'feliz']], checkTutorial); }
   else checkTutorial();
 }
-function cutGrass(tx, ty) {
+function cutGrass(tx, ty) {                          // la hierba se rompe ESTANDO ENCIMA y da monedas
   const n = 1 + Math.floor(Math.random() * 3);
   stats.monedas += n; markDirty();
   map[ty][tx] = 'Gb';
@@ -2007,12 +2116,13 @@ function hitTree(tx, ty) {
     if (isFreeTile(x, y)) { items.push({ tx: x, ty: y, kind: 'manzana', t: 0 }); treeNext[key] = now + GROW_MS; markDirty(); return; }
   }
 }
-function hitTile(tx, ty) {
+function hitTile(tx, ty) {                           // el golpe va hacia DELANTE
   const it = itemAt(tx, ty);
   if (it) { pickup(it); return; }
   const row = map[ty], t = row ? row[tx] : undefined;
-  if (t === 'G') cutGrass(tx, ty);
-  else if (t === 'Gb') burst(tx * T + 8, ty * T + 8, LEAF, 3);
+  if (t === 'G') {                                   // la hierba delante no se corta: hay que pisarla
+    if (!tut.grassHint) { tut.grassHint = true; kenSay([[TUT.grass, 'normal']]); }
+  }
   else if (t === 'PT') hitPalm();
   else if (t === 'T' && cw.outdoor) hitTree(tx, ty);
 }
@@ -2063,7 +2173,11 @@ function update(dt) {
   if (P.atk >= 0) {
     P.atk += dt;
     const s = swordInfo();
-    if (!P.hit && P.atk >= ATT * 0.4) { P.hit = true; const [dx, dy] = DIRS[P.dir]; hitTile(P.tx + dx, P.ty + dy); }
+    if (!P.hit && P.atk >= ATT * 0.4) {
+      P.hit = true;
+      if (map[P.ty][P.tx] === 'G') cutGrass(P.tx, P.ty);          // hierba: la que tienes ENCIMA
+      const [dx, dy] = DIRS[P.dir]; hitTile(P.tx + dx, P.ty + dy); // todo lo demás: hacia DELANTE
+    }
     if (s.t >= 0.2 && s.t <= 0.7) {
       const ox = P.x + 8, oy = P.y + 7;
       for (let i = 0; i < 3; i++) {
@@ -2236,35 +2350,35 @@ function drawPalm() {
     g.fillStyle = '#8a5a30'; g.fillRect(hx + dx, hy + dy, 3, 3);
   });
 }
-// EL ÁRBOL AZUL MILENARIO: tronco enorme y copa inmensa que brilla
+// EL ÁRBOL MILENARIO VERDE AZULADO: tronco enorme y copa inmensa que brilla
 function drawGiant() {
   const gi = cw.giant, gx = gi.tx * T + 8, gy = gi.ty * T + 18;
   pixelEllipse(gx + 10, gy + 4, 70, 15, '#0c1e38', 0.28);                       // sombra en el suelo
   for (let yy = 0; yy < 72; yy++) {                                             // tronco con raíces
     const k = yy / 71, w = Math.round(26 + 22 * (1 - k) * (1 - k) + (yy < 10 ? (10 - yy) * 1.6 : 0));
     const cxx = gx + Math.round(6 * k * k), left = cxx - Math.floor(w / 2), y = gy - yy;
-    g.fillStyle = '#2a3a6a'; g.fillRect(left, y, w, 1);
-    g.fillStyle = '#4a5aa0'; g.fillRect(left, y, Math.max(2, Math.round(w * 0.2)), 1);
-    g.fillStyle = '#18224a'; g.fillRect(left + Math.round(w * 0.78), y, Math.round(w * 0.22), 1);
-    for (let i = 0; i < 5; i++) if (hash(i, yy >> 3) % 3 === 0) { g.fillStyle = '#101a3a'; g.fillRect(left + Math.round(w * (0.2 + 0.15 * i)), y, 1, 1); }
-    g.fillStyle = '#0a1230'; g.fillRect(left - 1, y, 1, 1); g.fillRect(left + w, y, 1, 1);
+    g.fillStyle = '#2a4a5a'; g.fillRect(left, y, w, 1);
+    g.fillStyle = '#4a7a8a'; g.fillRect(left, y, Math.max(2, Math.round(w * 0.2)), 1);
+    g.fillStyle = '#16343f'; g.fillRect(left + Math.round(w * 0.78), y, Math.round(w * 0.22), 1);
+    for (let i = 0; i < 5; i++) if (hash(i, yy >> 3) % 3 === 0) { g.fillStyle = '#0d2530'; g.fillRect(left + Math.round(w * (0.2 + 0.15 * i)), y, 1, 1); }
+    g.fillStyle = '#0a2230'; g.fillRect(left - 1, y, 1, 1); g.fillRect(left + w, y, 1, 1);
   }
   const cx = gx + 6, cy = gy - 100, rx = 66, ry = 44;
-  pixelEllipse(cx, cy, rx * 1.15, ry * 1.2, '#4a7aef', 0.10 + 0.05 * Math.sin(time * 2));   // resplandor
-  pixelEllipse(cx, cy, rx + 2, ry + 2, '#0a1a4a', 1);
-  pixelEllipse(cx, cy, rx, ry, '#14286a', 1);
-  pixelEllipse(cx - 4, cy - 4, rx * 0.92, ry * 0.9, '#1f3f9a', 1);
+  pixelEllipse(cx, cy, rx * 1.15, ry * 1.2, '#3ae0c0', 0.10 + 0.05 * Math.sin(time * 2));   // resplandor
+  pixelEllipse(cx, cy, rx + 2, ry + 2, '#06303a', 1);
+  pixelEllipse(cx, cy, rx, ry, '#0b4a52', 1);
+  pixelEllipse(cx - 4, cy - 4, rx * 0.92, ry * 0.9, '#136a68', 1);
   for (let i = 0; i < 16; i++) {                                                // masas de hojas
     const a = (hash(i, 3) % 628) / 100, r = (hash(i, 4) % 100) / 100 * 0.75, sz = 10 + hash(i, 5) % 12;
-    pixelEllipse(cx + Math.cos(a) * rx * r, cy + Math.sin(a) * ry * r, sz, Math.round(sz * 0.7), i % 3 ? '#2f5ad0' : '#3d6ee8', 1);
+    pixelEllipse(cx + Math.cos(a) * rx * r, cy + Math.sin(a) * ry * r, sz, Math.round(sz * 0.7), i % 3 ? '#1f8a7a' : '#2fb8a0', 1);
   }
   for (let i = 0; i < 12; i++) {                                                // luces en las hojas
     const a = (hash(i, 8) % 628) / 100, r = 0.25 + (hash(i, 9) % 60) / 100;
-    pixelEllipse(cx - 8 + Math.cos(a) * rx * r * 0.8, cy - 8 + Math.sin(a) * ry * r * 0.7, 4 + i % 3, 3, '#8ab8ff', 1);
+    pixelEllipse(cx - 8 + Math.cos(a) * rx * r * 0.8, cy - 8 + Math.sin(a) * ry * r * 0.7, 4 + i % 3, 3, '#a8f0d8', 1);
   }
   for (let i = 0; i < 9; i++) {                                                 // motas de luz que flotan
     const a = time * 0.4 + i * 0.7;
-    if (Math.sin(time * 3 + i * 2) > -0.3) sparkle(cx + Math.cos(a) * rx * 0.9, cy + Math.sin(a * 1.3) * ry * 0.9, 1, i % 2 ? '#bfe8ff' : '#ffffff');
+    if (Math.sin(time * 3 + i * 2) > -0.3) sparkle(cx + Math.cos(a) * rx * 0.9, cy + Math.sin(a * 1.3) * ry * 0.9, 1, i % 2 ? '#d8fff0' : '#ffffff');
   }
 }
 function drawItemIcon(kind, x, y) {
@@ -2554,6 +2668,12 @@ function scene() {
   if (cw.palm) ents.push({ y: cw.palm.ty * T + 10, draw: drawPalm });
   if (cw.giant) ents.push({ y: (cw.giant.ty + 1) * T + 4, draw: drawGiant });
   ents.sort((a, b) => a.y - b.y).forEach(e => e.draw());
+
+  if (cw.well) {                                                 // destellos en el agua del pozo
+    const wx = cw.well.tx * T + 8, wy = cw.well.ty * T + 11;
+    if (Math.sin(time * 3) > 0.2) sparkle(wx - 3 + Math.sin(time) * 2, wy, 1, '#ffffff');
+    if (Math.sin(time * 3 + 2) > 0.2) sparkle(wx + 3, wy - 1, 1, '#bfe8ff');
+  }
 
   if (!D.active) {
     npcs.forEach(n => {
