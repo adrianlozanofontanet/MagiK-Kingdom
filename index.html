@@ -297,3 +297,391 @@ requestAnimationFrame(loop);
 </script>
 </body>
 </html>
+<script>
+// ============================================================
+//  MOLA+  ·  HUD gráfico, sonidos, música, día y noche y más
+//  Pégalo justo antes de </body> (después del </script> del juego)
+// ============================================================
+(function () {
+  const DIA_SEGUNDOS = 420;     // duración de un día completo (sube el número para días más largos)
+  const VOL_MUSICA = 0.03;      // volumen de la música (0 = sin música)
+  const lerp = (a, b, k) => a + (b - a) * k;
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const live = () => gameStarted();
+
+  // Los errores de este bloque nunca rompen el juego
+  const safe = fn => { try { fn(); } catch (e) { g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1; if (!safe.w) { safe.w = 1; console.warn('MOLA+', e); } } };
+  function hook(name, pre, post) {              // ejecuta algo antes/después de una función del juego
+    const orig = window[name];
+    if (typeof orig !== 'function') return;
+    window[name] = function () {
+      let ctx; try { if (pre) ctx = pre.apply(null, arguments); } catch (e) {}
+      const r = orig.apply(this, arguments);
+      try { if (post) post(ctx, arguments, r); } catch (e) {}
+      return r;
+    };
+  }
+
+  const st = { init: 0, lx: -1, ly: -1, w: '', step: -1, atk: -1, menu: false, hint: 0, shake: 0, last: 0, shown: 0 };
+  let dtG = 0, saveT = -9, hurtT = -9, shownCoins = 0, ban = null;
+  const pulse = { coin: -9, bag: -9 };
+  const flyers = [];
+
+  // ---------- temblor de pantalla ----------
+  const _camAxis = window.camAxis;
+  window.camAxis = (p, v, w) => {
+    const r = _camAxis(p, v, w);
+    return st.shake > 0.05 ? r + Math.round((Math.random() - 0.5) * 2 * st.shake) : r;
+  };
+
+  // ---------- SONIDO (sintetizado, sin archivos) ----------
+  let AC = null, sfxOn = true, musicOn = true;
+  function ac() {
+    if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+    if (AC && AC.state === 'suspended') AC.resume();
+    return AC;
+  }
+  function tone(f, d, type, vol, slide, delay) {
+    const a = AC; if (!a || !sfxOn) return;
+    const t0 = a.currentTime + (delay || 0), o = a.createOscillator(), gn = a.createGain();
+    o.type = type || 'square'; o.frequency.setValueAtTime(f, t0);
+    if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, f * slide), t0 + d);
+    gn.gain.setValueAtTime(vol || 0.05, t0); gn.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
+    o.connect(gn); gn.connect(a.destination); o.start(t0); o.stop(t0 + d + 0.03);
+  }
+  const SFX = {
+    coin()  { tone(988, 0.07, 'square', 0.04); tone(1319, 0.14, 'square', 0.04, 1, 0.07); },
+    pick()  { tone(660, 0.08, 'triangle', 0.07); tone(880, 0.12, 'triangle', 0.07, 1, 0.07); },
+    hit()   { tone(180, 0.1, 'sawtooth', 0.06, 0.5); },
+    grass() { tone(300, 0.06, 'square', 0.035, 2); tone(500, 0.05, 'square', 0.03, 1, 0.04); },
+    step()  { tone(80 + Math.random() * 30, 0.04, 'triangle', 0.025); },
+    swing() { tone(420, 0.12, 'sawtooth', 0.035, 2.2); },
+    save()  { [523, 659, 784, 1046].forEach((f, i) => tone(f, 0.16, 'triangle', 0.06, 1, i * 0.09)); },
+    door()  { tone(200, 0.12, 'triangle', 0.06, 0.6); tone(150, 0.16, 'triangle', 0.05, 0.6, 0.09); },
+    hurt()  { tone(220, 0.2, 'sawtooth', 0.07, 0.4); },
+    eat()   { tone(300, 0.05, 'square', 0.04); tone(260, 0.05, 'square', 0.04, 1, 0.07); tone(340, 0.08, 'square', 0.04, 1, 0.14); },
+    gate()  { [196, 165, 131].forEach((f, i) => tone(f, 0.4, 'sawtooth', 0.06, 0.8, i * 0.22)); },
+    splash(){ tone(600, 0.15, 'sine', 0.05, 0.4); },
+    ok()    { tone(784, 0.06, 'square', 0.03); },
+    fanfare(){ [523, 659, 784, 1046, 784, 1046].forEach((f, i) => tone(f, 0.14, 'square', 0.05, 1, i * 0.1)); }
+  };
+  const VOCES = { ken: 560, anciana: 380, bram: 170, mapache: 640, sabio: 300, voces: 460, leyenda: 240, cartel: 420 };
+
+  // ---------- MÚSICA tranquila que se genera sola ----------
+  let nextNote = 0, mstep = 0;
+  function mnote(f, d, vol, type, t0) {
+    const a = AC; if (!a || !musicOn || VOL_MUSICA <= 0) return;
+    const o = a.createOscillator(), gn = a.createGain();
+    o.type = type; o.frequency.value = f;
+    gn.gain.setValueAtTime(0.0001, t0); gn.gain.linearRampToValueAtTime(vol, t0 + 0.05); gn.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
+    o.connect(gn); gn.connect(a.destination); o.start(t0); o.stop(t0 + d + 0.05);
+  }
+  function musicTick() {
+    const a = AC; if (!a || !musicOn || !live() || fade) { nextNote = 0; return; }
+    if (nextNote < a.currentTime) nextNote = a.currentTime + 0.05;
+    const night = dayInfo().night > 0.5, len = night ? 0.7 : 0.5;
+    const sc = night ? [0, 3, 5, 7, 10] : [0, 2, 4, 7, 9], base = night ? 196 : 220;
+    const vol = (cw.outdoor ? 1 : 0.55) * VOL_MUSICA, seq = [0, 2, 1, 3, 2, 4, 3, 1];
+    while (nextNote < a.currentTime + 0.3) {
+      const deg = sc[(seq[mstep % 8] + ((mstep >> 3) % 3)) % 5];
+      mnote(base * Math.pow(2, (deg + (mstep % 16 < 8 ? 12 : 24)) / 12), 1.5, vol, 'triangle', nextNote);
+      if (mstep % 4 === 0) mnote(base * Math.pow(2, sc[(mstep >> 2) % 5] / 12) / 2, 2.4, vol * 1.2, 'sine', nextNote);
+      mstep++; nextNote += len;
+    }
+  }
+  addEventListener('keydown', e => {
+    ac();
+    const k = e.key.toLowerCase();
+    if (e.repeat || !gameStarted()) return;
+    if (k === 'n') { musicOn = !musicOn; floater(P.x + 8, P.y - 10, musicOn ? 'Música: sí' : 'Música: no', '#ffffff'); }
+    if (k === 'b') { sfxOn = !sfxOn; floater(P.x + 8, P.y - 10, sfxOn ? 'Sonidos: sí' : 'Sonidos: no', '#ffffff'); }
+  });
+  addEventListener('pointerdown', () => ac());
+
+  // ---------- DÍA Y NOCHE ----------
+  function dayInfo() {
+    const ph = ((time / DIA_SEGUNDOS) + 0.04) % 1;
+    const n = 0.5 - 0.5 * Math.cos(ph * Math.PI * 2);              // 0 mediodía … 1 medianoche
+    return { night: clamp((n - 0.55) / 0.3, 0, 1), dusk: clamp(1 - Math.abs(n - 0.5) / 0.16, 0, 1) };
+  }
+  function lights(cx, cy, k) {
+    g.globalCompositeOperation = 'lighter';
+    const x0 = Math.max(0, Math.floor(cx / T)), x1 = Math.min(COLS - 1, Math.ceil((cx + W) / T));
+    const y0 = Math.max(0, Math.floor(cy / T)), y1 = Math.min(ROWS - 1, Math.ceil((cy + H) / T));
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+      const t = map[y][x];
+      if (t === 'wn') pixelEllipse(x * T + 8 - cx, y * T + 8 - cy, 14, 11, '#ffb860', 0.16 * k * (0.85 + 0.15 * Math.sin(time * 5 + x)));
+      else if (t === 'poz') pixelEllipse(x * T + 8 - cx, y * T + 10 - cy, 16, 12, '#60b8ff', 0.18 * k);
+    }
+    if (cw.giant) pixelEllipse(cw.giant.tx * T + 8 - cx, cw.giant.ty * T - 70 - cy, 70, 46, '#30e0c0', 0.12 * k);
+    pixelEllipse(P.x + 8 - cx, P.y + 6 - cy, 34, 26, '#ffd890', 0.10 * k);          // el halo de Ken
+    g.globalCompositeOperation = 'source-over';
+  }
+  function fireflies(k) {
+    for (let i = 0; i < 16; i++) {
+      const x = ((hash(i, 31) % W) + Math.sin(time * 0.6 + i) * 18 + W) % W;
+      const y = ((hash(i, 32) % H) + Math.cos(time * 0.5 + i * 1.7) * 14 + H) % H;
+      const a = (0.5 + 0.5 * Math.sin(time * 2.2 + i * 1.3)) * k;
+      g.fillStyle = '#e8ff90';
+      g.globalAlpha = a; g.fillRect(Math.round(x), Math.round(y), 2, 2);
+      g.globalAlpha = a * 0.35; g.fillRect(Math.round(x) - 1, Math.round(y) - 1, 4, 4);
+    }
+    g.globalAlpha = 1;
+  }
+  function petals() {
+    if (cw.id !== 'aldea' && cw.id !== 'rotonda') return;
+    const col = cw.id === 'rotonda' ? ['#a8f0d8', '#7ad8c0', '#ffffff'] : ['#ffb8d0', '#ffe0a0', '#ffffff'];
+    for (let i = 0; i < 12; i++) {
+      const sp = 7 + (i % 4) * 2;
+      const x = (((hash(i, 41) % (W + 40)) + time * sp * 0.9 + Math.sin(time + i) * 6) % (W + 40)) - 20;
+      const y = (((hash(i, 42) % (H + 30)) + time * sp) % (H + 30)) - 15;
+      g.globalAlpha = 0.85; g.fillStyle = col[i % 3];
+      g.fillRect(Math.round(x), Math.round(y), 2, 1); g.fillRect(Math.round(x) + 1, Math.round(y) + 1, 1, 1);
+    }
+    g.globalAlpha = 1;
+  }
+  function smoke(cx, cy) {
+    if (cw.id !== 'aldea') return;
+    [[35, 13], [17, 12], [29, 12]].forEach(([tx, ty], j) => {
+      for (let i = 0; i < 5; i++) {
+        const k = (time * 0.45 + i / 5 + j * 0.3) % 1;
+        pixelEllipse(tx * T + 12 + Math.sin(time * 1.2 + i + j) * 2 + k * 6 - cx, ty * T + 2 - k * 22 - cy, 2 + k * 4, 1.5 + k * 3, '#e8e8f0', 0.5 * (1 - k));
+      }
+    });
+  }
+  function ambience(cx, cy) {
+    const di = dayInfo();
+    if (cw.outdoor) {
+      const k = di.night;
+      if (k > 0.01) {
+        g.globalCompositeOperation = 'multiply';
+        g.fillStyle = 'rgb(' + Math.round(lerp(255, 78, k)) + ',' + Math.round(lerp(255, 92, k)) + ',' + Math.round(lerp(255, 160, k)) + ')';
+        g.fillRect(0, 0, W, H); g.globalCompositeOperation = 'source-over';
+      }
+      if (di.dusk > 0.01) { g.fillStyle = 'rgba(255,130,50,' + (0.14 * di.dusk) + ')'; g.fillRect(0, 0, W, H); }
+      if (k > 0.05) { lights(cx, cy, k); fireflies(k); } else petals();
+    } else {                                                          // dentro de casa: viñeta cálida
+      const gr = g.createRadialGradient(W / 2, H / 2, H * 0.25, W / 2, H / 2, H * 0.85);
+      gr.addColorStop(0, 'rgba(20,10,0,0)'); gr.addColorStop(1, 'rgba(20,10,0,0.42)');
+      g.fillStyle = gr; g.fillRect(0, 0, W, H);
+    }
+  }
+  function dangerFx() {
+    let a = 0;
+    if (time - hurtT < 0.6) a = 0.55 * (1 - (time - hurtT) / 0.6);
+    if (stats.hambre <= 20) a = Math.max(a, 0.16 + 0.08 * Math.sin(time * 4));
+    if (stats.vida <= 1) a = Math.max(a, 0.14 + 0.08 * Math.sin(time * 6));
+    if (a <= 0.01) return;
+    const gr = g.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, H * 0.85);
+    gr.addColorStop(0, 'rgba(200,0,0,0)'); gr.addColorStop(1, 'rgba(200,0,0,' + a + ')');
+    g.fillStyle = gr; g.fillRect(0, 0, W, H);
+  }
+
+  // ---------- Iconos del HUD ----------
+  function iconMeat(x, y, flash) {
+    g.fillStyle = '#1a1220';
+    g.fillRect(x + 5, y, 8, 8); g.fillRect(x + 4, y + 1, 10, 6); g.fillRect(x + 1, y + 7, 6, 6); g.fillRect(x, y + 10, 4, 3);
+    g.fillStyle = flash ? '#ff7060' : '#c8503a'; g.fillRect(x + 6, y + 1, 6, 6); g.fillRect(x + 5, y + 2, 8, 4);
+    g.fillStyle = flash ? '#ffc0b0' : '#e8806a'; g.fillRect(x + 6, y + 2, 3, 2);
+    g.fillStyle = '#f4ecd0'; g.fillRect(x + 2, y + 8, 5, 4); g.fillRect(x + 1, y + 11, 3, 2);
+  }
+  function gem(x, y, col, on) {
+    for (let j = -5; j <= 5; j++) for (let i = -5; i <= 5; i++) {
+      const d = Math.abs(i) + Math.abs(j); if (d > 6) continue;
+      g.fillStyle = d > 5 ? '#0a0612' : on ? (i < 0 && j < 0 && d <= 3 ? '#ffffff' : col) : '#454555';
+      g.fillRect(x + 6 + i, y + 6 + j, 1, 1);
+    }
+    if (on && Math.sin(time * 4 + x) > 0.6) sparkle(x + 10, y + 1, 1, '#ffffff');
+  }
+  function keycap(x, y, label, w) {
+    g.fillStyle = '#1a1220'; g.fillRect(x, y, w, 13);
+    g.fillStyle = '#e8e0cc'; g.fillRect(x + 1, y + 1, w - 2, 10);
+    g.fillStyle = '#b8b098'; g.fillRect(x + 1, y + 10, w - 2, 1);
+    ptext(label, x + Math.floor((w - textW(label)) / 2), y + 1, '#3a2a18');
+  }
+
+  // ---------- HUD ----------
+  function hudDraw() {
+    g.fillStyle = 'rgba(20,12,36,0.45)'; g.fillRect(2, 2, 82, (quest.m || 0) === 1 ? 62 : 48);
+    for (let i = 0; i < stats.vidaMax; i++)
+      heart(7 + i * 10, 7 + ((stats.vida <= 1 && i < stats.vida && Math.floor(time * 6) % 2) ? 1 : 0), i < stats.vida);
+    const h = stats.hambre, low = h <= 20;
+    iconMeat(4, 17, low && Math.floor(time * 5) % 2);
+    g.fillStyle = '#1a1220'; g.fillRect(19, 20, 54, 8); g.fillStyle = '#4a3a2a'; g.fillRect(20, 21, 52, 6);
+    const fw = Math.round(52 * h / 100);
+    g.fillStyle = low ? '#d83030' : h <= 40 ? '#e8a030' : '#7ac84a'; g.fillRect(20, 21, fw, 6);
+    g.fillStyle = 'rgba(255,255,255,0.35)'; g.fillRect(20, 21, fw, 2);
+    shownCoins += (stats.monedas - shownCoins) * Math.min(1, dtG * 8);
+    if (Math.abs(stats.monedas - shownCoins) < 0.5) shownCoins = stats.monedas;
+    const pop = time - pulse.coin < 0.3 || Math.round(shownCoins) !== stats.monedas;
+    iconCoin(3, 27 + (pop ? -1 : 0));
+    stext(String(Math.round(shownCoins)), 20, 32, pop ? '#fff6b0' : '#ffd84a', pop ? 1.15 : 1);
+    if ((quest.m || 0) === 1) {
+      drawItemIcon('manzana', 4, 46);
+      stext(Math.min(inv.manzana, 3) + '/3', 20, 48, inv.manzana >= 3 ? '#9aff9a' : '#ffffff');
+    }
+  }
+  function bagDraw() {
+    const units = [];
+    FOODS.concat(OBJS).forEach(k => { for (let i = 0; i < inv[k]; i++) units.push(k); });
+    const full = units.length >= CAP, by = H - 22;
+    for (let i = 0; i < CAP; i++) {
+      const x = 6 + i * 15, hit = time - pulse.bag < 0.25 && i === Math.min(CAP - 1, units.length - 1);
+      g.fillStyle = hit ? '#ffd84a' : (full && Math.floor(time * 4) % 2) ? '#d83030' : '#1a1220';
+      g.fillRect(x, by, 14, 14);
+      g.fillStyle = 'rgba(70,46,26,0.9)'; g.fillRect(x + 1, by + 1, 12, 12);
+      g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(x + 1, by + 9, 12, 4);
+      if (units[i]) drawItemIcon(units[i], x + 1, by + 1);
+    }
+    if (full) stext('MOCHILA LLENA', 6, by - 10, '#ff9090');
+  }
+  function sealsDraw() {
+    if (!tut.homeDone || tut.gateOpen) return;
+    const sl = seals(), list = [['#c080ff', sl.sabio, 'S'], ['#e8a050', sl.mapache, 'M'], ['#4adf6a', sl.hogar, 'H'], ['#ffd84a', sl.peaje, 'P']];
+    const x0 = W - 4 * 17 - 6, y0 = 6;
+    g.fillStyle = 'rgba(20,12,36,0.6)'; g.fillRect(x0 - 3, y0 - 3, 4 * 17 + 4, 27);
+    list.forEach(([c, on, l], i) => { gem(x0 + i * 17, y0, c, on); ptext(l, x0 + i * 17 + 4, y0 + 12, on ? '#fff6b0' : '#8a8a9a'); });
+  }
+  function taskBar() {
+    if (tut.step < 1 || tut.step > 3) return;
+    const list = [['lb', tut.stSave, 1], ['dp', tut.stFood, 2], ['bu', tut.stObj, 2], ['lm', tut.stDeco, 3]];
+    const pw = list.length * 20 + 8, x0 = Math.round(W / 2 - pw / 2), y0 = 26;
+    g.fillStyle = 'rgba(20,12,36,0.78)'; g.fillRect(x0, y0, pw, 28);
+    g.fillStyle = '#d9b44a'; g.fillRect(x0, y0, pw, 1); g.fillRect(x0, y0 + 27, pw, 1);
+    list.forEach(([k, done, step], i) => {
+      const x = x0 + 5 + i * 20, active = tut.step === step && !done;
+      g.globalAlpha = tut.step >= step ? 1 : 0.35;
+      g.drawImage(TILES[k], 0, 0, 16, 16, x, y0 + 8, 16, 16);
+      g.globalAlpha = 1;
+      if (done) {
+        g.fillStyle = '#0a2a10'; g.fillRect(x + 9, y0 + 17, 7, 7);
+        g.fillStyle = '#4adf6a'; g.fillRect(x + 10, y0 + 18, 5, 5);
+        g.fillStyle = '#ffffff'; g.fillRect(x + 11, y0 + 21, 1, 1); g.fillRect(x + 12, y0 + 20, 1, 1); g.fillRect(x + 13, y0 + 19, 1, 1);
+      }
+      if (active) {
+        const b = Math.round(Math.sin(time * 6) * 1.5);
+        g.fillStyle = '#ffd84a';
+        g.fillRect(x + 4, y0 + 1 + b, 8, 1); g.fillRect(x + 5, y0 + 2 + b, 6, 1); g.fillRect(x + 6, y0 + 3 + b, 4, 1); g.fillRect(x + 7, y0 + 4 + b, 2, 1);
+      }
+    });
+  }
+  function hints() {
+    const k = time - st.hint; if (k > 22) return;
+    g.globalAlpha = k < 17 ? 1 : 1 - (k - 17) / 5;
+    const list = [['↑↓←→', 'mover'], ['A', 'golpear'], ['E', 'hablar'], ['M', 'menú'], ['N', 'música']];
+    const wd = list.map(([key, lab]) => { const kw = Math.max(12, Math.ceil(textW(key)) + 6); return [kw, kw + 4 + Math.ceil(textW(lab))]; });
+    const total = wd.reduce((s, w) => s + w[1] + 10, -10);
+    let x = Math.round(W / 2 - total / 2); const y = H - 40;
+    list.forEach(([key, lab], i) => { keycap(x, y, key, wd[i][0]); stext(lab, x + wd[i][0] + 4, y + 2, '#ffffff'); x += wd[i][1] + 10; });
+    g.globalAlpha = 1;
+  }
+
+  // ---------- Objetos y monedas que vuelan al HUD ----------
+  const slotPos = i => ({ x: 6 + i * 15 + 7, y: H - 22 + 7 });
+  function flyItem(kind, wx, wy, tgt, delay) {
+    const cx = _camAxis(P.x + 8, W, COLS * T), cy = _camAxis(P.y + 8, H, ROWS * T);
+    flyers.push({ kind, x0: wx - cx, y0: wy - cy, tgt, t: -(delay || 0) });
+  }
+  function flyersDraw() {
+    for (let i = flyers.length - 1; i >= 0; i--) {
+      const f = flyers[i]; f.t += dtG;
+      if (f.t < 0) continue;
+      const k = clamp(f.t / 0.6, 0, 1), e = k * k * (3 - 2 * k);
+      const x = Math.round(lerp(f.x0, f.tgt.x, e)), y = Math.round(lerp(f.y0, f.tgt.y, e) - Math.sin(k * Math.PI) * 20);
+      if (f.kind === 'coin') iconCoin(x - 8, y - 8); else drawItemIcon(f.kind, x - 6, y - 6);
+      if (k >= 1) { pulse[f.kind === 'coin' ? 'coin' : 'bag'] = time; flyers.splice(i, 1); }
+    }
+  }
+
+  // ---------- Cartel de zona y aviso de guardado ----------
+  const NOMBRES = { isla: 'ISLA DESIERTA', aldea: 'ALDEA DE ROWAN', rotonda: 'LA PLAZA DEL ÁRBOL MILENARIO', hogar: 'TU CASA',
+    mapache: 'CASA DE MISIONES', mago: 'CASA DEL SABIO', casaA: 'CASA DE UN VECINO', casaB: 'CASA DE UN VECINO', casaC: 'CASA DE UN VECINO', casaD: 'CASA DE UN VECINO' };
+  function bannerDraw() {
+    if (!ban) return;
+    const k = time - ban.t0; if (k > 3) { ban = null; return; }
+    const slide = k < 0.4 ? k / 0.4 : k > 2.5 ? 1 - (k - 2.5) / 0.5 : 1;
+    const tw = textW(ban.text) * 1.2, w = Math.ceil(tw) + 34, x = Math.round(W / 2 - w / 2), y = Math.round(-18 + slide * 30);
+    g.fillStyle = '#d9b44a'; g.fillRect(x - 1, y - 1, w + 2, 19);
+    g.fillStyle = '#160e2c'; g.fillRect(x, y, w, 17);
+    g.fillStyle = '#2a1d4a'; g.fillRect(x, y, w, 2);
+    stext(ban.text, Math.round(W / 2 - tw / 2), y + 3, '#fff6b8', 1.2);
+    sparkle(x + 9, y + 8, 1, '#ffd84a'); sparkle(x + w - 9, y + 8, 1, '#ffd84a');
+  }
+  function saveIcon() {
+    const k = time - saveT; if (k > 2) return;
+    g.globalAlpha = k < 0.2 ? k / 0.2 : k > 1.6 ? 1 - (k - 1.6) / 0.4 : 1;
+    g.drawImage(TILES.lb, 0, 0, 16, 16, W - 22, H - 22, 16, 16);
+    sparkle(W - 8 + Math.sin(time * 8) * 2, H - 20, 1, '#ffffff');
+    stext('Guardado', W - 22 - Math.ceil(textW('Guardado')) - 4, H - 18, '#fff6b8');
+    g.globalAlpha = 1;
+  }
+
+  // ---------- Lo que pasa cada fotograma ----------
+  function tick() {
+    const dt = clamp(time - st.last, 0, 0.1); st.last = time; dtG = dt;
+    if (!st.init) { st.init = 1; shownCoins = stats.monedas; st.step = tut.step; st.hint = time; st.w = cw.id; st.lx = P.tx; st.ly = P.ty; }
+    st.shake = Math.max(0, st.shake - dt * 14);
+    if (cw.id !== st.w) { st.w = cw.id; st.lx = P.tx; st.ly = P.ty; }
+    else if (P.tx !== st.lx || P.ty !== st.ly) {                       // polvo, hojas y pasos
+      st.lx = P.tx; st.ly = P.ty;
+      const row = map[P.ty], t = row && row[P.tx];
+      if (t === 'G') { burst(P.x + 8, P.y + 12, LEAF, 4); SFX.grass(); }
+      else { burst(P.x + 8, P.y + 14, cw.outdoor ? ['#d8c8a8', '#b8a888'] : ['#c8b090', '#a89070'], 2); SFX.step(); }
+    }
+    if (P.atk >= 0 && st.atk < 0) SFX.swing();
+    st.atk = P.atk;
+    if (menu.open !== st.menu) { st.menu = menu.open; SFX.ok(); }
+    if (tut.step !== st.step) {                                        // tarea de Elda completada
+      if (tut.step > st.step && st.step >= 1) {
+        SFX.fanfare(); floater(P.x + 8, P.y - 10, '¡Tarea completada!', '#ffd84a');
+        burst(P.x + 8, P.y + 4, ['#ffd84a', '#ffffff', '#c080ff'], 22);
+      }
+      st.step = tut.step;
+    }
+  }
+
+  // ---------- Sustituye el HUD de texto por el gráfico ----------
+  window.drawHud = function () {
+    safe(tick);
+    const cx = _camAxis(P.x + 8, W, COLS * T), cy = _camAxis(P.y + 8, H, ROWS * T);
+    safe(() => smoke(cx, cy));
+    safe(() => ambience(cx, cy));
+    safe(dangerFx);
+    safe(hudDraw);
+    if (!D.active) { safe(bagDraw); safe(hints); }
+    safe(taskBar); safe(sealsDraw); safe(flyersDraw); safe(saveIcon); safe(bannerDraw); safe(musicTick);
+  };
+
+  // ---------- Sonidos y efectos enganchados al juego ----------
+  hook('pickup', () => carried(), (n, a) => {
+    const it = a[0];
+    if (carried() > n) { SFX.pick(); flyItem(it.kind, it.tx * T + 8, it.ty * T + 8, slotPos(clamp(carried() - 1, 0, CAP - 1))); }
+  });
+  hook('cutGrass', () => stats.monedas, (m0, a) => {
+    SFX.grass(); SFX.coin();
+    for (let i = 0; i < stats.monedas - m0; i++) flyItem('coin', a[0] * T + 8, a[1] * T + 8, { x: 11, y: 35 }, i * 0.1);
+  });
+  hook('hitPalm', null, () => { SFX.hit(); st.shake = Math.max(st.shake, 2); });
+  hook('hitTile', (tx, ty) => { const row = map[ty]; return row ? row[tx] : null; }, t => {
+    if (t === 'T' || t === 'O' || t === 'rk') { SFX.hit(); st.shake = Math.max(st.shake, 1.4); }
+  });
+  hook('saveGame', null, () => { saveT = time; SFX.save(); });
+  hook('hurt', null, () => { hurtT = time; SFX.hurt(); st.shake = 4; });
+  hook('tossCoin', () => stats.monedas, m => { if (stats.monedas !== m) { SFX.coin(); SFX.splash(); } });
+  hook('payToll', () => tut.peaje, p => { if (!p && tut.peaje) { SFX.coin(); pulse.coin = time; } });
+  hook('openGate', null, () => { SFX.gate(); st.shake = 5; });
+  hook('enterDoor', null, () => SFX.door());
+  hook('exitHouse', null, () => SFX.door());
+  hook('goTo', null, () => SFX.door());
+  hook('moveItem', null, () => SFX.ok());
+  hook('activateItem', () => stats.hambre, h => { if (stats.hambre !== h) SFX.eat(); });
+  hook('loadWorld', () => cw && cw.id, prev => {
+    if (cw.id !== prev && live()) ban = { text: NOMBRES[cw.id] || cw.id.toUpperCase(), t0: time };
+  });
+  hook('drawDialogue', () => {                                         // "blips" al hablar, distintos según quién habla
+    const s = Math.floor(D.shown / 3);
+    if (D.active && D.shown < D.total && s !== st.shown) { st.shown = s; tone((VOCES[D.who] || 440) + Math.random() * 40, 0.03, 'square', 0.02); }
+    if (D.shown === 0) st.shown = 0;
+  });
+})();
+</script>
