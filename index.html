@@ -69,12 +69,18 @@ function sfx(k) {
   if (k === 'die')    tone('sawtooth', 500, t, 0.7, 0.3, master, 50);
   if (k === 'portal') [72,76,79,84,88].forEach((n, i) => tone('square', mf(n), t + i*0.07, 0.2, 0.25, master));
   if (k === 'win')    [72,76,79,84,79,84,88,91].forEach((n, i) => tone('square', mf(n), t + i*0.13, 0.3, 0.3, master));
+  if (k === 'bike')   { [67,72,76].forEach((n, i) => tone('square', mf(n), t + i*0.06, 0.12, 0.25, master)); tone('triangle', 400, t+0.2, 0.25, 0.3, master, 900); }
+  if (k === 'gold')   [72,76,79,84,88,91,96].forEach((n, i) => tone('square', mf(n), t + i*0.06, 0.18, 0.25, master));
+  if (k === 'life')   [76,79,88,84,86,91].forEach((n, i) => tone('square', mf(n), t + i*0.08, 0.14, 0.28, master));
+  if (k === 'hit')    tone('sawtooth', 300, t, 0.3, 0.3, master, 80);
+  if (k === 'over')   [67,64,60,55].forEach((n, i) => tone('triangle', mf(n), t + i*0.25, 0.4, 0.4, master));
 }
 
 /* ============ NIVELES ============
  #  bloque    @  inicio del yayo   E  enemigo
  S  muelle pequeño (salta MENOS)   H  muelle grande (salta MÁS)
- P  portal al siguiente nivel */
+ P  portal al siguiente nivel
+ B  bici (más rápido)   G  estrella dorada (super yayo, vuela)   V  vida extra */
 function mk(name, w, gaps, items, sky1, sky2, night) {
   const rows = [];
   for (let r = 0; r < ROWS; r++) rows.push(Array(w).fill(' '));
@@ -86,21 +92,22 @@ function mk(name, w, gaps, items, sky1, sky2, night) {
 }
 const levels = [
   mk('Mundo 1: Valle Verde', 65, [[27,3],[57,2]],
-    [[11,2,'@'],[11,13,'E'],[11,25,'S'],[10,46,'###'],[11,49,'E'],[11,61,'P']],
+    [[11,2,'@'],[11,8,'B'],[11,13,'E'],[11,25,'S'],[11,36,'V'],[10,46,'###'],[9,47,'V'],[11,49,'E'],[11,52,'G'],[11,61,'P']],
     '#5c94fc', '#a8d8ff'),
   mk('Mundo 2: Cielo de Muelles', 62, [[26,3]],
-    [[11,2,'@'],[11,8,'E'],[11,16,'S'],[11,22,'E'],[11,32,'H'],
-     [6,38,'###########'],[5,43,'P']],
+    [[11,2,'@'],[11,5,'B'],[11,8,'E'],[11,16,'S'],[11,22,'E'],[11,30,'G'],[11,32,'H'],
+     [6,38,'###########'],[5,40,'V'],[5,43,'P']],
     '#ff9e5e', '#ffe0a8'),
   mk('Mundo 3: Cueva Nocturna', 80, [[20,3],[34,4],[50,3],[62,4]],
-    [[11,2,'@'],[11,12,'E'],[11,18,'S'],[11,26,'E'],[11,32,'S'],
-     [9,40,'####'],[8,41,'E'],[11,44,'E'],[11,48,'S'],[11,60,'H'],
-     [11,70,'E'],[11,76,'P']],
+    [[11,2,'@'],[11,9,'B'],[11,12,'E'],[11,18,'S'],[11,26,'E'],[11,32,'S'],
+     [9,40,'####'],[8,41,'E'],[8,43,'V'],[11,44,'E'],[11,48,'S'],[11,56,'G'],[11,60,'H'],
+     [11,67,'B'],[11,70,'E'],[11,76,'P']],
     '#0b1030', '#2b2f6b', true)
 ];
 
 /* ============ ESTADO ============ */
-let lv = 0, grid, W, p, enemies, cam = 0, state = 'title', timer = 0, banner = 0, tick = 0;
+let lv = 0, lives = 3, grid, W, p, enemies, cam = 0, state = 'title', timer = 0, banner = 0, tick = 0;
+const BIKE_TIME = 900, GOLD_TIME = 600;
 const keys = {};
 function startGame() {
   initAudio();
@@ -122,7 +129,7 @@ function load(i) {
   enemies = [];
   for (let r = 0; r < ROWS; r++) for (let c = 0; c < W; c++) {
     const ch = grid[r][c];
-    if (ch === '@') { p = { x: c*T+5, y: (r+1)*T-30, w: 22, h: 30, vx: 0, vy: 0, dir: 1, onGround: false, sprung: false }; grid[r][c] = ' '; }
+    if (ch === '@') { p = { x: c*T+5, y: (r+1)*T-30, w: 22, h: 30, vx: 0, vy: 0, dir: 1, onGround: false, sprung: false, bike: 0, gold: 0, inv: 0 }; grid[r][c] = ' '; }
     if (ch === 'E') { enemies.push({ x: c*T+3, y: (r+1)*T-24, w: 26, h: 24, vx: -1, vy: 0, dead: false, onGround: false }); grid[r][c] = ' '; }
   }
   state = 'play'; banner = 150; cam = 0;
@@ -158,46 +165,80 @@ function boxY(e) {
 }
 const overlap = (a, b) => a.x < b.x+b.w && a.x+a.w > b.x && a.y < b.y+b.h && a.y+a.h > b.y;
 
-function die() { if (state === 'play') { state = 'dead'; timer = 70; sfx('die'); } }
+function die() {
+  if (state !== 'play') return;
+  lives--; state = 'dead'; timer = 70; sfx('die');
+}
 function nextLevel() {
+  const b = p.bike, g = p.gold;       // los comodines viajan por el portal
   lv++;
   if (lv >= levels.length) { state = 'win'; lv = levels.length - 1; curTrack = -1; sfx('win'); }
-  else { sfx('portal'); load(lv); }
+  else { sfx('portal'); load(lv); p.bike = b; p.gold = g; }
 }
+function restartAll() { lv = 0; lives = 3; load(0); }
 
 /* ============ ACTUALIZAR ============ */
 function update() {
   tick++;
   if (state === 'title') return;
   if (banner > 0) banner--;
-  if (state === 'dead') { if (--timer <= 0) load(lv); return; }
-  if (state === 'win') { if (keys.Enter) { lv = 0; load(0); } return; }
+  if (state === 'dead') {
+    if (--timer <= 0) { if (lives <= 0) { state = 'gameover'; curTrack = -1; sfx('over'); } else load(lv); }
+    return;
+  }
+  if (state === 'gameover' || state === 'win') { if (keys.Enter) restartAll(); return; }
   if (keys.KeyR) { load(lv); return; }
+
+  if (p.bike > 0) p.bike--;
+  if (p.gold > 0) p.gold--;
+  if (p.inv > 0) p.inv--;
+  const fly = p.gold > 0;
 
   const left = keys.ArrowLeft || keys.KeyA, right = keys.ArrowRight || keys.KeyD;
   const jump = keys.Space || keys.ArrowUp || keys.KeyW;
-  const target = (right ? 3.2 : 0) - (left ? 3.2 : 0);
-  p.vx += (target - p.vx) * 0.3;
+  const down = keys.ArrowDown || keys.KeyS;
+  const speed = fly ? 4.6 : (p.bike > 0 ? 6.8 : 3.2);
+  const target = (right ? speed : 0) - (left ? speed : 0);
+  p.vx += (target - p.vx) * (p.bike > 0 && !fly ? 0.15 : 0.3);
   if (target > 0) p.dir = 1;
   if (target < 0) p.dir = -1;
 
-  if (jump && p.onGround) { p.vy = -11.5; p.onGround = false; p.sprung = false; sfx('jump'); }
-  if (!jump && p.vy < -4 && !p.sprung) p.vy = -4;      // salto corto si sueltas
-  p.vy = Math.min(p.vy + 0.6, 14);
-  if (p.vy >= 0) p.sprung = false;
+  if (fly) {
+    // Super yayo: vuela (Espacio/↑ sube, ↓ baja, si no haces nada flota)
+    if (jump) p.vy = Math.max(p.vy - 0.9, -5);
+    else if (down) p.vy = Math.min(p.vy + 0.9, 5);
+    else p.vy *= 0.85;
+    p.sprung = false;
+  } else {
+    if (jump && p.onGround) { p.vy = -11.5; p.onGround = false; p.sprung = false; sfx('jump'); }
+    if (!jump && p.vy < -4 && !p.sprung) p.vy = -4;      // salto corto si sueltas
+    p.vy = Math.min(p.vy + 0.6, 14);
+    if (p.vy >= 0) p.sprung = false;
+  }
 
   p.x += p.vx; boxX(p);
   p.x = Math.max(0, Math.min(p.x, W*T - p.w));
   p.y += p.vy; boxY(p);
+  if (fly && p.y < 0) { p.y = 0; p.vy = 0; }
 
   // Muelles
-  if (p.onGround) {
+  if (p.onGround && !fly) {
     const r = Math.floor((p.y+p.h-1)/T);
     for (let c = Math.floor(p.x/T); c <= Math.floor((p.x+p.w-1)/T); c++) {
       const ch = grid[r] && grid[r][c];
       if (ch === 'S') { p.vy = -15; p.onGround = false; p.sprung = true; sfx('springS'); }
       if (ch === 'H') { p.vy = -21; p.onGround = false; p.sprung = true; sfx('springH'); }
     }
+  }
+
+  // Comodines
+  const rr0 = Math.max(0, Math.floor(p.y/T)), rr1 = Math.min(ROWS-1, Math.floor((p.y+p.h-1)/T));
+  const cc0 = Math.max(0, Math.floor(p.x/T)), cc1 = Math.min(W-1, Math.floor((p.x+p.w-1)/T));
+  for (let r = rr0; r <= rr1; r++) for (let c = cc0; c <= cc1; c++) {
+    const ch = grid[r][c];
+    if (ch === 'B') { grid[r][c] = ' '; p.bike = BIKE_TIME; sfx('bike'); }
+    else if (ch === 'G') { grid[r][c] = ' '; p.gold = GOLD_TIME; p.inv = 20; sfx('gold'); }
+    else if (ch === 'V') { grid[r][c] = ' '; lives = Math.min(9, lives + 1); sfx('life'); }
   }
 
   // Portal
@@ -217,7 +258,10 @@ function update() {
     }
     if (e.y > VH + 100) e.dead = true;
     if (overlap(p, e)) {
-      if (p.vy > 0 && (p.y + p.h) - e.y < 18) { e.dead = true; p.vy = -9; p.sprung = true; sfx('stomp'); }
+      if (fly) { e.dead = true; sfx('stomp'); }                               // super yayo arrasa
+      else if (p.vy > 0 && (p.y + p.h) - e.y < 18) { e.dead = true; p.vy = -9; p.sprung = true; sfx('stomp'); }
+      else if (p.inv > 0) { /* invulnerable un momento */ }
+      else if (p.bike > 0) { p.bike = 0; p.inv = 90; p.vy = -8; p.sprung = true; sfx('hit'); }  // pierdes la bici, no la vida
       else die();
     }
   });
@@ -227,27 +271,53 @@ function update() {
 }
 
 /* ============ DIBUJO ============ */
-function drawYayo(x, y, dir, moving, air) {
+// mode: 0 normal, 1 en bici, 2 super yayo dorado
+function drawYayo(x, y, dir, moving, air, mode) {
   ctx.save();
   ctx.translate(Math.round(x + 11), Math.round(y));
   ctx.scale(dir, 1);
   ctx.translate(-11, 0);
+  const gold = mode === 2;
+  if (gold) { ctx.shadowColor = '#ffd700'; ctx.shadowBlur = 18; }
   const off = moving && !air ? Math.sin(tick*0.35) * 3 : 0;
+
+  if (gold) {   // capa
+    ctx.fillStyle = '#e53935';
+    const w = Math.sin(tick*0.3) * 3;
+    ctx.beginPath(); ctx.moveTo(4, 13); ctx.lineTo(-8 + w, 20); ctx.lineTo(-6 + w, 28); ctx.lineTo(6, 24); ctx.closePath(); ctx.fill();
+  }
+  if (mode === 1) {   // bici
+    const a = tick * (moving ? 0.4 : 0.05);
+    ctx.strokeStyle = '#222'; ctx.lineWidth = 2;
+    [[3,24],[19,24]].forEach(([cx, cy]) => {
+      ctx.beginPath(); ctx.arc(cx, cy, 6, 0, 7); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(a)*6, cy + Math.sin(a)*6); ctx.lineTo(cx - Math.cos(a)*6, cy - Math.sin(a)*6);
+      ctx.moveTo(cx + Math.cos(a+1.57)*6, cy + Math.sin(a+1.57)*6); ctx.lineTo(cx - Math.cos(a+1.57)*6, cy - Math.sin(a+1.57)*6);
+      ctx.stroke();
+    });
+    ctx.strokeStyle = '#1e88e5'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(3,24); ctx.lineTo(10,16); ctx.lineTo(19,24); ctx.moveTo(10,16); ctx.lineTo(8,24);
+    ctx.moveTo(19,24); ctx.lineTo(17,14); ctx.lineTo(21,14); ctx.stroke();
+    ctx.translate(0, -5);   // el yayo va subido
+  }
+
+  const shirt = gold ? '#ffc107' : '#5f8a9e', collar = gold ? '#fff176' : '#86adbf', pants = gold ? '#ff8f00' : '#3a4660';
   // piernas y zapatos
-  ctx.fillStyle = '#3a4660';
+  ctx.fillStyle = pants;
   ctx.fillRect(4 + off, 23, 6, 6); ctx.fillRect(12 - off, 23, 6, 6);
   ctx.fillStyle = '#222';
   ctx.fillRect(3 + off, 28, 8, 2); ctx.fillRect(11 - off, 28, 8, 2);
-  // cuerpo (polo azul verdoso)
-  ctx.fillStyle = '#5f8a9e'; ctx.fillRect(2, 12, 18, 12);
+  // cuerpo
+  ctx.fillStyle = shirt; ctx.fillRect(2, 12, 18, 12);
   ctx.fillRect(0, 13, 3, 8); ctx.fillRect(19, 13, 3, 8);
-  ctx.fillStyle = '#86adbf'; ctx.fillRect(7, 12, 8, 3);          // cuello
+  ctx.fillStyle = collar; ctx.fillRect(7, 12, 8, 3);
   ctx.fillStyle = '#e0b08c'; ctx.fillRect(0, 21, 3, 3); ctx.fillRect(19, 21, 3, 3); // manos
   // cabeza
   ctx.fillStyle = '#e0b08c';
   ctx.beginPath(); ctx.ellipse(11, 6, 8, 7, 0, 0, Math.PI*2); ctx.fill();
   // pelo canoso a los lados
-  ctx.fillStyle = '#c9c9c9';
+  ctx.fillStyle = gold ? '#fffde7' : '#c9c9c9';
   ctx.fillRect(2, 3, 3, 6); ctx.fillRect(17, 3, 3, 6);
   ctx.fillRect(4, 0, 3, 2); ctx.fillRect(15, 0, 3, 2);
   // gafas
@@ -273,6 +343,44 @@ function drawEnemy(e) {
   ctx.fillStyle = '#000'; ctx.fillRect(x+8, y+10, 3, 3); ctx.fillRect(x+15, y+10, 3, 3);
   ctx.strokeStyle = '#000'; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.moveTo(x+5, y+6); ctx.lineTo(x+11, y+9); ctx.moveTo(x+21, y+6); ctx.lineTo(x+15, y+9); ctx.stroke();
+}
+
+function star(cx, cy, R, r) {
+  ctx.beginPath();
+  for (let i = 0; i < 10; i++) {
+    const a = -Math.PI/2 + i * Math.PI/5, d = i % 2 ? r : R;
+    ctx.lineTo(cx + Math.cos(a)*d, cy + Math.sin(a)*d);
+  }
+  ctx.closePath();
+}
+
+function drawItem(ch, x, y) {
+  const bob = Math.sin(tick*0.08 + x*0.05) * 3;
+  const cx = x + 16, cy = y + 18 + bob;
+  // halo
+  const col = ch === 'B' ? '30,136,229' : ch === 'G' ? '255,215,0' : '67,200,90';
+  const hg = ctx.createRadialGradient(cx, cy, 2, cx, cy, 22);
+  hg.addColorStop(0, `rgba(${col},.55)`); hg.addColorStop(1, `rgba(${col},0)`);
+  ctx.fillStyle = hg; ctx.fillRect(cx-24, cy-24, 48, 48);
+
+  if (ch === 'B') {   // bici
+    ctx.strokeStyle = '#111'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(cx-8, cy+4, 6, 0, 7); ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx+8, cy+4, 6, 0, 7); ctx.stroke();
+    ctx.strokeStyle = '#1e88e5'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(cx-8, cy+4); ctx.lineTo(cx-1, cy-5); ctx.lineTo(cx+8, cy+4);
+    ctx.moveTo(cx-1, cy-5); ctx.lineTo(cx-3, cy+4); ctx.moveTo(cx+8, cy+4); ctx.lineTo(cx+6, cy-7); ctx.lineTo(cx+10, cy-7); ctx.stroke();
+  } else if (ch === 'G') {   // estrella dorada
+    ctx.fillStyle = '#ffc107'; star(cx, cy, 14, 6); ctx.fill();
+    ctx.fillStyle = '#fff59d'; star(cx, cy, 8, 3.5); ctx.fill();
+    ctx.strokeStyle = '#b8860b'; ctx.lineWidth = 1.5; star(cx, cy, 14, 6); ctx.stroke();
+    ctx.fillStyle = '#222'; ctx.fillRect(cx-5, cy-2, 2, 3); ctx.fillRect(cx+3, cy-2, 2, 3);
+  } else if (ch === 'V') {   // corazón verde 1UP
+    ctx.fillStyle = '#2ecc40';
+    ctx.beginPath(); ctx.arc(cx-6, cy-4, 7, 0, 7); ctx.arc(cx+6, cy-4, 7, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(cx-13, cy-1); ctx.lineTo(cx, cy+13); ctx.lineTo(cx+13, cy-1); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 9px monospace'; ctx.textAlign = 'center'; ctx.fillText('1UP', cx, cy+2);
+  }
 }
 
 function drawTile(c, r, ch, sx) {
@@ -304,6 +412,8 @@ function drawTile(c, r, ch, sx) {
     }
     ctx.fillStyle = 'rgba(255,255,255,.5)';
     ctx.beginPath(); ctx.ellipse(cx, cy, 5 + Math.sin(tick*0.2)*2, 12, 0, 0, Math.PI*2); ctx.fill();
+  } else if (ch === 'B' || ch === 'G' || ch === 'V') {
+    drawItem(ch, x, y);
   }
 }
 
@@ -337,7 +447,10 @@ function draw() {
   }
   ctx.save(); ctx.translate(-Math.round(cam), 0);
   enemies.forEach(e => { if (!e.dead) drawEnemy(e); });
-  if (state !== 'dead' || Math.floor(tick/4) % 2) drawYayo(p.x, p.y, p.dir, Math.abs(p.vx) > 0.5, !p.onGround);
+  const mode = p.gold > 0 ? 2 : (p.bike > 0 ? 1 : 0);
+  const endingGold = p.gold > 0 && p.gold < 120 && Math.floor(tick/5) % 2;   // parpadea al acabarse
+  const hidden = (state === 'dead' && !(Math.floor(tick/4) % 2)) || (p.inv > 0 && p.gold === 0 && Math.floor(tick/3) % 2);
+  if (!hidden) drawYayo(p.x, p.y, p.dir, Math.abs(p.vx) > 0.5, !p.onGround, endingGold ? 0 : mode);
   ctx.restore();
 
   // HUD
@@ -347,11 +460,36 @@ function draw() {
   ctx.font = '12px monospace';
   ctx.fillText('← → / A D mover · Espacio / W / ↑ saltar · R reiniciar · M música ' + (muted ? '(OFF)' : '(ON)'), 12, 44);
   ctx.fillText('Muelle amarillo = salta menos · Muelle rojo = salta MÁS', 12, 60);
-  ctx.textAlign = 'center';
+  ctx.fillText('Bici = rápido · Estrella dorada = vuelas (Espacio sube, ↓ baja) · Corazón = vida', 12, 76);
+  // vidas
+  ctx.textAlign = 'right'; ctx.font = 'bold 20px monospace';
+  ctx.fillStyle = '#ff5252'; ctx.fillText('♥ x ' + lives, VW - 12, 26);
+  // barras de comodines
+  let by = 40;
+  const bar = (label, v, max, color) => {
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(VW - 172, by, 160, 14);
+    ctx.fillStyle = color; ctx.fillRect(VW - 170, by + 2, 156 * v / max, 10);
+    ctx.shadowBlur = 4; ctx.fillStyle = '#fff'; ctx.font = 'bold 11px monospace';
+    ctx.fillText(label, VW - 178, by + 11);
+    by += 20;
+  };
+  if (p.bike > 0) bar('BICI', p.bike, BIKE_TIME, '#1e88e5');
+  if (p.gold > 0) bar('SUPER YAYO', p.gold, GOLD_TIME, '#ffc107');
+
+  ctx.textAlign = 'center'; ctx.fillStyle = '#fff';
   if (banner > 0 && state !== 'title') { ctx.font = 'bold 28px monospace'; ctx.fillText(L.name, VW/2, 150); }
   if (state === 'dead') { ctx.font = 'bold 32px monospace'; ctx.fillText('¡Ay, mis huesos!', VW/2, 200); }
+  if (state === 'gameover') {
+    ctx.shadowBlur = 0; ctx.fillStyle = 'rgba(0,0,0,.7)'; ctx.fillRect(0, 0, VW, VH); ctx.shadowBlur = 4;
+    ctx.fillStyle = '#ff5252'; ctx.font = 'bold 44px monospace';
+    ctx.fillText('FIN DEL JUEGO', VW/2, 190);
+    ctx.fillStyle = '#fff'; ctx.font = '18px monospace';
+    ctx.fillText('El yayo necesita una siesta...', VW/2, 225);
+    ctx.fillText('Pulsa ENTER para volver a intentarlo', VW/2, 255);
+  }
   if (state === 'win') {
-    ctx.fillStyle = 'rgba(0,0,0,.6)'; ctx.fillRect(0, 0, VW, VH);
+    ctx.shadowBlur = 0; ctx.fillStyle = 'rgba(0,0,0,.6)'; ctx.fillRect(0, 0, VW, VH); ctx.shadowBlur = 4;
     ctx.fillStyle = '#ffd54f'; ctx.font = 'bold 36px monospace';
     ctx.fillText('¡EL YAYO LO LOGRÓ!', VW/2, 190);
     ctx.fillStyle = '#fff'; ctx.font = '18px monospace';
@@ -368,7 +506,7 @@ function draw() {
     if (Math.floor(tick/30) % 2) ctx.fillText('Pulsa cualquier tecla o haz clic para empezar', VW/2, 250);
     ctx.font = '14px monospace';
     ctx.fillText('(M para silenciar la música)', VW/2, 285);
-    drawYayo(VW/2 - 11, 300, 1, false, false);
+    drawYayo(VW/2 - 11, 300, 1, false, false, 0);
   }
   ctx.shadowBlur = 0;
 }
